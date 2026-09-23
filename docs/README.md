@@ -12,6 +12,7 @@ This directory contains the durable product and technical documents for the firs
 | [UX brief](UX_BRIEF.md) | Information architecture, page behavior, content presentation, and mobile principles |
 | [Architecture](ARCHITECTURE.md) | System boundaries, repository layout, request flows, and technology decisions |
 | [Data model](DATA_MODEL.md) | Supabase-oriented tables, relationships, constraints, and access rules |
+| [Supabase setup](../supabase/README.md) | Migration, seed, RLS, and local/production database workflow |
 | [API contract](API_CONTRACT.md) | Versioned FastAPI endpoints, payloads, errors, and authorization rules |
 | [Security and privacy](SECURITY.md) | Authentication, authorization, RLS, input validation, abuse controls, and operational safeguards |
 | [Deployment](DEPLOYMENT.md) | Render, Vercel, Supabase, environment variables, release, and rollback procedures |
