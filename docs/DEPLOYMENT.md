@@ -14,6 +14,8 @@ The GitHub Actions workflow at `.github/workflows/ci-cd.yml` is the deployment p
 
 The complete branch policy is documented in [DEVELOPMENT.md](DEVELOPMENT.md).
 
+The production domain setup and Name.com DNS checklist are documented in [DOMAIN_SETUP.md](DOMAIN_SETUP.md).
+
 ## 1. Target topology
 
 ```text
