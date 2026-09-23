@@ -1,0 +1,351 @@
+name: Siyana Maths CI/CD
+
+on:
+  push:
+    branches:
+      - main
+      - develop
+  pull_request:
+    branches:
+      - main
+      - develop
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-cd-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  PYTHON_VERSION: '3.12'
+  NODE_VERSION: '22'
+
+jobs:
+  preflight:
+    name: CI / Preflight
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    outputs:
+      web: ${{ steps.apps.outputs.web }}
+      api: ${{ steps.apps.outputs.api }}
+      migrations: ${{ steps.apps.outputs.migrations }}
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v4
+
+      - name: Detect application components
+        id: apps
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [ -f apps/web/package.json ]; then
+            echo "web=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "web=false" >> "$GITHUB_OUTPUT"
+            echo "::notice::apps/web is not present; web checks and deployment will be skipped."
+          fi
+          if [ -f apps/api/pyproject.toml ]; then
+            echo "api=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "api=false" >> "$GITHUB_OUTPUT"
+            echo "::notice::apps/api is not present; API checks and deployment will be skipped."
+          fi
+          if [ -d supabase/migrations ] && find supabase/migrations -type f -name '*.sql' -print -quit | grep -q .; then
+            echo "migrations=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "migrations=false" >> "$GITHUB_OUTPUT"
+            echo "::notice::No Supabase migrations are present; migration deployment will be skipped."
+          fi
+
+  repository:
+    name: CI / Repository
+    needs: preflight
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v4
+
+      - name: Verify private agent workspace is not tracked
+        shell: bash
+        run: |
+          set -euo pipefail
+          if git ls-files --error-unmatch .agent >/dev/null 2>&1; then
+            echo "::error::Private .agent files must never be tracked."
+            git ls-files .agent
+            exit 1
+          fi
+
+      - name: Verify required public documentation
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -f README.md
+          test -f docs/PRODUCT_SPEC.md
+          test -f docs/ARCHITECTURE.md
+          test -f docs/DATA_MODEL.md
+          test -f docs/API_CONTRACT.md
+          test -f docs/SECURITY.md
+          test -f docs/DEPLOYMENT.md
+
+      - name: Check whitespace
+        shell: bash
+        run: |
+          set -euo pipefail
+          if git rev-parse --verify HEAD^ >/dev/null 2>&1; then
+            git diff --check HEAD^
+          fi
+
+      - name: Validate local Markdown links
+        shell: bash
+        run: |
+          python - <<'PY'
+          import re
+          import sys
+          from pathlib import Path
+          from urllib.parse import urlparse
+
+          errors = []
+          link_pattern = re.compile(r"\[[^\]]*\]\(([^)]+)\)")
+          for document in Path('.').rglob('*.md'):
+              if '.agent' in document.parts or '.git' in document.parts:
+                  continue
+              text = document.read_text(encoding='utf-8')
+              for target in link_pattern.findall(text):
+                  target = target.strip().split()[0].strip('<>')
+                  parsed = urlparse(target)
+                  if parsed.scheme or target.startswith('#'):
+                      continue
+                  relative = target.split('#', 1)[0].split('?', 1)[0]
+                  if not relative:
+                      continue
+                  if not (document.parent / relative).resolve().exists():
+                      errors.append(f'{document}: {target}')
+          if errors:
+              print('Broken local Markdown links:')
+              print('\n'.join(errors))
+              sys.exit(1)
+          print('Local Markdown links are valid.')
+          PY
+
+  backend:
+    name: CI / FastAPI
+    needs: preflight
+    if: needs.preflight.outputs.api == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    defaults:
+      run:
+        working-directory: apps/api
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+          cache: pip
+
+      - name: Install API dependencies
+        run: python -m pip install --upgrade pip && python -m pip install -e ".[dev]"
+
+      - name: Lint API
+        run: ruff check .
+
+      - name: Test API
+        run: pytest
+
+  frontend:
+    name: CI / Next.js
+    needs: preflight
+    if: needs.preflight.outputs.web == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    defaults:
+      run:
+        working-directory: apps/web
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+          cache-dependency-path: apps/web/package-lock.json
+
+      - name: Install web dependencies
+        run: npm ci
+
+      - name: Lint web
+        run: npm run lint
+
+      - name: Type-check web
+        run: npm run typecheck
+
+      - name: Build web
+        run: npm run build
+
+  preview-web:
+    name: CD / Vercel Preview
+    needs: [preflight, repository, backend, frontend]
+    if: >-
+      always() &&
+      needs.preflight.outputs.web == 'true' &&
+      (github.event_name == 'pull_request' || github.ref == 'refs/heads/develop') &&
+      needs.repository.result == 'success' &&
+      (needs.backend.result == 'success' || needs.backend.result == 'skipped') &&
+      (needs.frontend.result == 'success' || needs.frontend.result == 'skipped')
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    environment: preview
+    defaults:
+      run:
+        working-directory: apps/web
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+          cache-dependency-path: apps/web/package-lock.json
+
+      - name: Install Vercel CLI
+        run: npm install --global vercel@latest
+
+      - name: Create Vercel preview
+        env:
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+          VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+          VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [ -z "${VERCEL_TOKEN:-}" ] || [ -z "${VERCEL_ORG_ID:-}" ] || [ -z "${VERCEL_PROJECT_ID:-}" ]; then
+            echo "::notice::Vercel preview credentials are not configured; preview deployment skipped."
+            exit 0
+          fi
+          vercel pull --yes --environment=preview --token="$VERCEL_TOKEN"
+          vercel build --token="$VERCEL_TOKEN"
+          vercel deploy --prebuilt --token="$VERCEL_TOKEN"
+
+  migrate-production:
+    name: CD / Supabase Migrations
+    needs: [preflight, repository, backend, frontend]
+    if: >-
+      always() &&
+      github.ref == 'refs/heads/main' &&
+      needs.preflight.outputs.migrations == 'true' &&
+      needs.repository.result == 'success' &&
+      (needs.backend.result == 'success' || needs.backend.result == 'skipped') &&
+      (needs.frontend.result == 'success' || needs.frontend.result == 'skipped')
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    environment: production
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v4
+
+      - name: Set up Supabase CLI
+        uses: supabase/setup-cli@v1
+        with:
+          version: latest
+
+      - name: Apply pending migrations
+        env:
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+          SUPABASE_PROJECT_REF: ${{ secrets.SUPABASE_PROJECT_REF }}
+          SUPABASE_DB_PASSWORD: ${{ secrets.SUPABASE_DB_PASSWORD }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          : "${SUPABASE_ACCESS_TOKEN:?SUPABASE_ACCESS_TOKEN is required}"
+          : "${SUPABASE_PROJECT_REF:?SUPABASE_PROJECT_REF is required}"
+          : "${SUPABASE_DB_PASSWORD:?SUPABASE_DB_PASSWORD is required}"
+          supabase link --project-ref "$SUPABASE_PROJECT_REF" --password "$SUPABASE_DB_PASSWORD"
+          supabase db push --linked --password "$SUPABASE_DB_PASSWORD"
+
+  production-api:
+    name: CD / Render Production API
+    needs: [preflight, repository, backend, frontend, migrate-production]
+    if: >-
+      always() &&
+      github.ref == 'refs/heads/main' &&
+      needs.preflight.outputs.api == 'true' &&
+      needs.repository.result == 'success' &&
+      (needs.backend.result == 'success' || needs.backend.result == 'skipped') &&
+      (needs.frontend.result == 'success' || needs.frontend.result == 'skipped') &&
+      (needs.migrate-production.result == 'success' || needs.migrate-production.result == 'skipped')
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    environment: production
+    steps:
+      - name: Trigger Render deployment
+        env:
+          RENDER_API_KEY: ${{ secrets.RENDER_API_KEY }}
+          RENDER_API_SERVICE_ID: ${{ secrets.RENDER_API_SERVICE_ID }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          : "${RENDER_API_KEY:?RENDER_API_KEY is required}"
+          : "${RENDER_API_SERVICE_ID:?RENDER_API_SERVICE_ID is required}"
+          curl --fail-with-body --silent --show-error \
+            --request POST \
+            --url "https://api.render.com/v1/services/${RENDER_API_SERVICE_ID}/deploys" \
+            --header "Authorization: Bearer ${RENDER_API_KEY}" \
+            --header "Accept: application/json" \
+            --header "Content-Type: application/json" \
+            --data '{"clearCache":"do_not_clear"}'
+
+  production-web:
+    name: CD / Vercel Production
+    needs: [preflight, repository, backend, frontend, migrate-production]
+    if: >-
+      always() &&
+      github.ref == 'refs/heads/main' &&
+      needs.preflight.outputs.web == 'true' &&
+      needs.repository.result == 'success' &&
+      (needs.backend.result == 'success' || needs.backend.result == 'skipped') &&
+      (needs.frontend.result == 'success' || needs.frontend.result == 'skipped') &&
+      (needs.migrate-production.result == 'success' || needs.migrate-production.result == 'skipped')
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    environment: production
+    defaults:
+      run:
+        working-directory: apps/web
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+          cache-dependency-path: apps/web/package-lock.json
+
+      - name: Install Vercel CLI
+        run: npm install --global vercel@latest
+
+      - name: Create Vercel production deployment
+        env:
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+          VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+          VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          : "${VERCEL_TOKEN:?VERCEL_TOKEN is required}"
+          : "${VERCEL_ORG_ID:?VERCEL_ORG_ID is required}"
+          : "${VERCEL_PROJECT_ID:?VERCEL_PROJECT_ID is required}"
+          vercel pull --yes --environment=production --token="$VERCEL_TOKEN"
+          vercel build --prod --token="$VERCEL_TOKEN"
+          vercel deploy --prebuilt --prod --token="$VERCEL_TOKEN"
