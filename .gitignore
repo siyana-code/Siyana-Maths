@@ -25,6 +25,10 @@ venv/
 .mypy_cache/
 .ruff_cache/
 
+# Supabase local tooling
+supabase/.temp/
+supabase/.branches/
+
 # Node.js / Next.js
 node_modules/
 .next/
