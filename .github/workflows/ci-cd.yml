@@ -33,7 +33,7 @@ jobs:
       migrations: ${{ steps.apps.outputs.migrations }}
     steps:
       - name: Check out source
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
 
       - name: Detect application components
         id: apps
@@ -66,7 +66,7 @@ jobs:
     timeout-minutes: 10
     steps:
       - name: Check out source
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
 
       - name: Verify private agent workspace is not tracked
         shell: bash
@@ -141,7 +141,7 @@ jobs:
         working-directory: apps/api
     steps:
       - name: Check out source
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
 
       - name: Set up Python
         uses: actions/setup-python@v5
@@ -169,7 +169,7 @@ jobs:
         working-directory: apps/web
     steps:
       - name: Check out source
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
 
       - name: Set up Node.js
         uses: actions/setup-node@v4
@@ -208,7 +208,7 @@ jobs:
         working-directory: apps/web
     steps:
       - name: Check out source
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
 
       - name: Set up Node.js
         uses: actions/setup-node@v4
@@ -251,7 +251,7 @@ jobs:
     environment: production
     steps:
       - name: Check out source
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
 
       - name: Set up Supabase CLI
         uses: supabase/setup-cli@v1
@@ -323,7 +323,7 @@ jobs:
         working-directory: apps/web
     steps:
       - name: Check out source
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
 
       - name: Set up Node.js
         uses: actions/setup-node@v4
