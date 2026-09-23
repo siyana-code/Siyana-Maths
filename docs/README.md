@@ -15,6 +15,7 @@ This directory contains the durable product and technical documents for the firs
 | [API contract](API_CONTRACT.md) | Versioned FastAPI endpoints, payloads, errors, and authorization rules |
 | [Security and privacy](SECURITY.md) | Authentication, authorization, RLS, input validation, abuse controls, and operational safeguards |
 | [Deployment](DEPLOYMENT.md) | Render, Vercel, Supabase, environment variables, release, and rollback procedures |
+| [Domain setup](DOMAIN_SETUP.md) | `siyanamaths.dev`, Name.com DNS, Vercel, Render, HTTPS, and renewal checklist |
 | [Development and branching](DEVELOPMENT.md) | `main`/`develop`/feature workflow, pull requests, and CI/CD behavior |
 | [Roadmap](ROADMAP.md) | Delivery phases, action IDs, and launch gates |
 | [Decision summary](DECISIONS.md) | Accepted decisions and intentionally deferred choices |

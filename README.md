@@ -2,6 +2,8 @@
 
 **A focused O/L Mathematics past-paper platform for Sri Lankan students.**
 
+Production domain: `siyanamaths.dev`
+
 Siyana Maths brings past-paper questions, Sinhala solutions, detailed marking schemes, and the tutor's YouTube/TikTok/Facebook discussions into one searchable, mobile-friendly place.
 
 > **Project status:** MVP foundation. The public application has not launched yet. The first release is planned around the latest O/L Mathematics paper, followed by older papers and future lesson-based teaching.
