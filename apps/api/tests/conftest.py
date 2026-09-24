@@ -13,6 +13,9 @@ def settings() -> Settings:
     return Settings(
         app_env="test",
         api_version="0.1.0",
+        supabase_url=None,
+        supabase_anon_key=None,
+        supabase_service_role_key=None,
         allowed_origins="http://localhost:3000",
     )
 

@@ -114,7 +114,11 @@ class SupabaseGateway:
         if not self.configured:
             return SupabaseStatus(False, None, "not_configured")
         try:
-            response = await self.request("GET", "/rest/v1/")
+            response = await self.request(
+                "GET",
+                "/rest/v1/exam_levels",
+                params={"select": "id", "limit": 1},
+            )
         except SupabaseNotConfigured:
             return SupabaseStatus(False, None, "not_configured")
         except SupabaseRequestError as exc:
