@@ -63,6 +63,8 @@ class SupabaseGateway:
         *,
         use_service_role: bool = False,
         prefer_count: bool = False,
+        prefer_returning: bool = False,
+        prefer_resolution: bool = False,
     ) -> dict[str, str]:
         key = self._key(use_service_role=use_service_role)
         headers = {
@@ -72,6 +74,12 @@ class SupabaseGateway:
         }
         if prefer_count:
             headers["Prefer"] = "count=exact"
+        if prefer_returning:
+            headers["Prefer"] = (
+                "resolution=merge-duplicates,return=representation"
+                if prefer_resolution
+                else "return=representation"
+            )
         return headers
 
     async def _get_client(self) -> httpx.AsyncClient:
@@ -88,6 +96,8 @@ class SupabaseGateway:
         json: dict[str, Any] | None = None,
         use_service_role: bool = False,
         prefer_count: bool = False,
+        prefer_returning: bool = False,
+        prefer_resolution: bool = False,
     ) -> httpx.Response:
         if not self.settings.supabase_url:
             raise SupabaseNotConfigured("SUPABASE_URL is not configured")
@@ -102,6 +112,8 @@ class SupabaseGateway:
                 headers=self._headers(
                     use_service_role=use_service_role,
                     prefer_count=prefer_count,
+                    prefer_returning=prefer_returning,
+                    prefer_resolution=prefer_resolution,
                 ),
             )
         except httpx.HTTPError as exc:
@@ -181,6 +193,68 @@ class SupabaseGateway:
             if candidate.isdigit():
                 total = int(candidate)
         return SupabasePage(rows=rows, total=total)
+
+    @staticmethod
+    def _table_path(table: str) -> str:
+        if not table.replace("_", "").isalnum():
+            raise ValueError("Invalid Supabase table name")
+        return f"/rest/v1/{table}"
+
+    async def insert_row(
+        self,
+        table: str,
+        payload: dict[str, Any],
+        *,
+        use_service_role: bool = True,
+        on_conflict: str | None = None,
+    ) -> dict[str, Any]:
+        params = {"onConflict": on_conflict} if on_conflict else None
+        response = await self.request(
+            "POST",
+            self._table_path(table),
+            params=params,
+            json=payload,
+            use_service_role=use_service_role,
+            prefer_returning=True,
+            prefer_resolution=on_conflict is not None,
+        )
+        rows = response.json()
+        if not isinstance(rows, list) or not rows:
+            raise SupabaseRequestError(response.status_code, "Supabase insert returned no row")
+        return rows[0]
+
+    async def update_row(
+        self,
+        table: str,
+        row_id: str,
+        payload: dict[str, Any],
+        *,
+        use_service_role: bool = True,
+    ) -> dict[str, Any]:
+        response = await self.request(
+            "PATCH",
+            self._table_path(table),
+            params={"id": f"eq.{row_id}"},
+            json=payload,
+            use_service_role=use_service_role,
+            prefer_returning=True,
+        )
+        rows = response.json()
+        if not isinstance(rows, list) or not rows:
+            raise SupabaseRequestError(response.status_code, "Supabase update returned no row")
+        return rows[0]
+
+    async def get_profile(self, user_id: str) -> dict[str, Any] | None:
+        response = await self.request(
+            "GET",
+            self._table_path("profiles"),
+            params={"id": f"eq.{user_id}", "select": "id,display_name,role", "limit": 1},
+            use_service_role=True,
+        )
+        rows = response.json()
+        if not isinstance(rows, list):
+            raise SupabaseRequestError(response.status_code, "Supabase returned an invalid profile")
+        return rows[0] if rows else None
 
     async def close(self) -> None:
         if self._owns_client and self._client is not None:

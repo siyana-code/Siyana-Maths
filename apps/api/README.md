@@ -30,8 +30,12 @@ Useful URLs:
 
 - `http://localhost:8000/health` — liveness check
 - `http://localhost:8000/ready` — configuration readiness
-- `http://localhost:8000/docs` — OpenAPI documentation
+- `http://localhost:8000/docs` — interactive OpenAPI documentation
+- `http://localhost:8000/openapi.json` — raw OpenAPI contract
 - `http://localhost:8000/api/v1/papers` — public published-paper list
+- `http://localhost:8000/api/v1/admin/me` — authenticated admin identity
+
+Admin routes require a Supabase access token in `Authorization: Bearer <token>` and a matching `profiles.role = 'admin'` row.
 
 `/health` works without Supabase configuration. The paper endpoint returns a safe `503` until the Supabase settings and database schema are available.
 

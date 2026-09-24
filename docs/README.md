@@ -14,6 +14,8 @@ This directory contains the durable product and technical documents for the firs
 | [Data model](DATA_MODEL.md) | Supabase-oriented tables, relationships, constraints, and access rules |
 | [Supabase setup](../supabase/README.md) | Migration, seed, RLS, and local/production database workflow |
 | [API contract](API_CONTRACT.md) | Versioned FastAPI endpoints, payloads, errors, and authorization rules |
+| [OpenAPI documentation](OPENAPI.md) | Interactive `/docs`, raw `/openapi.json`, export workflow, and auth details |
+| [Generated OpenAPI JSON](openapi.json) | Checked-in machine-readable API contract |
 | [Security and privacy](SECURITY.md) | Authentication, authorization, RLS, input validation, abuse controls, and operational safeguards |
 | [Deployment](DEPLOYMENT.md) | Render, Vercel, Supabase, environment variables, release, and rollback procedures |
 | [Domain setup](DOMAIN_SETUP.md) | `siyanamaths.dev`, Name.com DNS, Vercel, Render, HTTPS, and renewal checklist |

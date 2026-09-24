@@ -5,6 +5,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from app.api.v1.health import router as health_router
 from app.api.v1.router import api_router
+from app.core.auth import SupabaseJWTVerifier
 from app.core.config import Settings, get_settings
 from app.core.errors import install_exception_handlers
 from app.core.logging import configure_logging
@@ -15,24 +16,36 @@ from app.integrations.supabase import SupabaseGateway
 def create_app(
     settings: Settings | None = None,
     supabase_gateway: SupabaseGateway | None = None,
+    auth_verifier: SupabaseJWTVerifier | None = None,
 ) -> FastAPI:
     app_settings = settings or get_settings()
     gateway = supabase_gateway or SupabaseGateway(app_settings)
+    verifier = auth_verifier or SupabaseJWTVerifier(app_settings)
 
     @asynccontextmanager
     async def lifespan(app: FastAPI):
         configure_logging(app.state.settings)
         yield
         await app.state.supabase.close()
+        await app.state.auth_verifier.close()
 
     app = FastAPI(
         title="Siyana Maths API",
         description="API for O/L Mathematics papers, answers, marking schemes, and video links.",
         version=app_settings.api_version,
         lifespan=lifespan,
+        openapi_tags=[
+            {"name": "health", "description": "Liveness and dependency readiness checks."},
+            {"name": "papers", "description": "Public published O/L Mathematics paper catalog."},
+            {
+                "name": "admin",
+                "description": "Authenticated paper and content management operations.",
+            },
+        ],
     )
     app.state.settings = app_settings
     app.state.supabase = gateway
+    app.state.auth_verifier = verifier
 
     app.add_middleware(RequestIdMiddleware)
     app.add_middleware(

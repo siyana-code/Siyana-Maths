@@ -158,6 +158,12 @@ jobs:
       - name: Test API
         run: pytest
 
+      - name: Check checked-in OpenAPI export
+        shell: bash
+        run: |
+          python scripts/export_openapi.py ../../docs/openapi.json
+          git diff --exit-code -- ../../docs/openapi.json
+
   frontend:
     name: CI / Next.js
     needs: preflight
