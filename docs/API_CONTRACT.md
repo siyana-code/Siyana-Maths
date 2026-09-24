@@ -55,6 +55,18 @@ Error response:
 
 Never return raw database exceptions, provider responses, tokens, or internal stack traces.
 
+## 2.1 Authentication and OpenAPI
+
+Admin routes use a Supabase access token:
+
+```http
+Authorization: Bearer <supabase-access-token>
+```
+
+FastAPI verifies the token against the Supabase JWKS endpoint, checks issuer, audience, expiry, and subject, then loads the user's `profiles.role` through the protected backend. Only `admin` profiles may mutate content.
+
+Interactive documentation is available at `/docs`; the raw contract is `/openapi.json`. The checked-in export and regeneration instructions are documented in [OPENAPI.md](OPENAPI.md).
+
 ## 3. Health and site
 
 ### `GET /health`
