@@ -24,8 +24,8 @@ export function NewPaperForm() {
   const [submitting, setSubmitting] = useState(false);
 
   useEffect(() => {
-    apiRequest<{ data: Taxonomy }>("/taxonomy")
-      .then((response) => setTaxonomy(response.data))
+    apiRequest<Taxonomy>("/taxonomy")
+      .then((response) => setTaxonomy(response))
       .catch((loadError) =>
         setError(loadError instanceof ApiError ? loadError.message : "Unable to load reference data."),
       );

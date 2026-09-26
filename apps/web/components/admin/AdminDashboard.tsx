@@ -18,10 +18,10 @@ export function AdminDashboard() {
     try {
       const [paperResponse, taxonomyResponse] = await Promise.all([
         apiRequest<PaperListResponse>("/admin/papers?page_size=50"),
-        apiRequest<{ data: Taxonomy }>("/taxonomy"),
+        apiRequest<Taxonomy>("/taxonomy"),
       ]);
       setPapers(paperResponse.data);
-      setTaxonomy(taxonomyResponse.data);
+      setTaxonomy(taxonomyResponse);
     } catch (loadError) {
       setError(loadError instanceof ApiError ? loadError.message : "Unable to load the admin workspace.");
     } finally {
