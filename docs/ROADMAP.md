@@ -1,7 +1,7 @@
 # Delivery Roadmap — MVP
 
-**Status:** Planning baseline
-**Last updated:** 2026-09-23
+**Status:** Implementation in progress
+**Last updated:** 2026-09-26
 
 ## Phase 0 — Product and architecture lock
 
@@ -25,13 +25,13 @@
 
 **Goal:** create a reproducible monorepo skeleton.
 
-- [ ] Create `apps/api` and `apps/web`.
-- [ ] Select and pin Python and Node package managers.
-- [ ] Add backend lint, format, and test commands.
-- [ ] Add frontend lint, typecheck, and production build commands.
-- [ ] Add `.env.example` files with placeholders only.
-- [ ] Add CI checks for lint, tests, and builds.
-- [ ] Add local setup documentation.
+- [x] Create `apps/api` and `apps/web`.
+- [x] Select and pin Python and Node package managers.
+- [x] Add backend lint, format, and test commands.
+- [x] Add frontend lint, typecheck, and production build commands.
+- [x] Add `.env.example` files with placeholders only.
+- [x] Add CI checks for lint, tests, and builds.
+- [x] Add local setup documentation.
 
 **Exit gate:** clean setup from a fresh checkout; baseline checks pass.
 
@@ -39,12 +39,12 @@
 
 **Goal:** create the safe database/auth foundation.
 
-- [ ] Create versioned migrations and seed workflow.
-- [ ] Create profiles, exam levels, subjects, years, topics, and papers.
-- [ ] Create questions, answers, and full marking-scheme items.
-- [ ] Create paper/question video sources and contact messages.
-- [ ] Add constraints, indexes, mark validation, and deletion behavior.
-- [ ] Add RLS and service-role boundaries.
+- [x] Create versioned migrations and seed workflow.
+- [x] Create profiles, exam levels, subjects, years, topics, and papers.
+- [x] Create questions, answers, and full marking-scheme items.
+- [x] Create paper/question video sources and contact messages.
+- [x] Add constraints, indexes, mark validation, and deletion behavior.
+- [x] Add RLS and service-role boundaries.
 - [ ] Configure Auth redirects and an admin test account.
 - [ ] Test migrations from an empty database.
 
@@ -54,15 +54,15 @@
 
 **Goal:** expose secure, documented APIs.
 
-- [ ] Add settings, logging, request IDs, and health endpoints.
-- [ ] Add Supabase JWT and admin-role verification.
-- [ ] Add public taxonomy and published-paper endpoints.
-- [ ] Add question, answer, and marking-scheme responses.
-- [ ] Add admin paper/question/solution/marking/video CRUD.
-- [ ] Add publication validation and status transitions.
-- [ ] Add provider-aware URL validation and embed generation.
+- [x] Add settings, logging, request IDs, and health endpoints.
+- [x] Add Supabase JWT and admin-role verification.
+- [x] Add public taxonomy and published-paper endpoints.
+- [x] Add question, answer, and marking-scheme responses.
+- [x] Add admin paper/question/solution/marking/video CRUD.
+- [x] Add publication validation and status transitions.
+- [x] Add provider-aware URL validation and embed generation.
 - [ ] Add contact submission and admin message review endpoints.
-- [ ] Add tests and OpenAPI contract checks.
+- [x] Add tests and OpenAPI contract checks.
 
 **Exit gate:** draft content cannot leak; admin operations and contact protections are tested.
 
@@ -86,13 +86,13 @@
 
 **Goal:** let the tutor manage content without database access.
 
-- [ ] Build secure admin sign-in and protected routes.
-- [ ] Build paper list and status/search filters.
-- [ ] Build standard metadata editor.
-- [ ] Build ordered question and solution editor.
-- [ ] Build full marking-scheme editor with mark totals.
-- [ ] Build paper/question video source editor.
-- [ ] Build preview, publish, archive, and delete confirmation flows.
+- [x] Build secure admin sign-in and protected routes.
+- [x] Build paper list and status/search filters.
+- [x] Build standard metadata editor.
+- [x] Build ordered question and solution editor.
+- [x] Build full marking-scheme editor with mark totals.
+- [x] Build paper/question video source editor.
+- [~] Build preview, publish, archive, and delete confirmation flows (publish implemented; preview/archive/delete pending).
 - [ ] Build contact-submission review.
 - [ ] Test the complete publish-to-public journey.
 
