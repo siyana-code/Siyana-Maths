@@ -1,7 +1,9 @@
+import re
+import unicodedata
 from datetime import UTC, datetime
 from decimal import Decimal
 from typing import Any
-from uuid import UUID
+from uuid import UUID, uuid4
 
 from app.integrations.supabase import SupabaseGateway, SupabaseNotConfigured, SupabaseRequestError
 from app.models.admin import (
@@ -12,6 +14,13 @@ from app.models.admin import (
     QuestionCreateRequest,
     VideoSourceCreateRequest,
 )
+
+
+def _unique_slug(title: str, paper_number: str) -> str:
+    normalized = unicodedata.normalize("NFKD", f"{title} {paper_number}")
+    ascii_text = normalized.encode("ascii", "ignore").decode("ascii")
+    base = re.sub(r"[^a-z0-9]+", "-", ascii_text.lower()).strip("-") or "paper"
+    return f"{base[:80].rstrip('-')}-{uuid4().hex[:8]}"
 
 
 class AdminRepositoryError(RuntimeError):
@@ -105,7 +114,14 @@ class SupabaseAdminRepository:
 
     async def create_paper(self, payload: PaperCreateRequest, admin_id: UUID) -> dict[str, Any]:
         body = payload.model_dump(mode="json", exclude_none=True)
-        body.update({"status": "draft", "created_by": str(admin_id), "updated_by": str(admin_id)})
+        body.update(
+            {
+                "slug": _unique_slug(payload.title, payload.paper_number),
+                "status": "draft",
+                "created_by": str(admin_id),
+                "updated_by": str(admin_id),
+            }
+        )
         try:
             return await self.gateway.insert_row("papers", body, use_service_role=True)
         except SupabaseNotConfigured as exc:

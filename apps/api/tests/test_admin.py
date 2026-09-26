@@ -74,7 +74,8 @@ class FakeAdminGateway:
         self, table: str, payload: dict[str, Any], **kwargs: Any
     ) -> dict[str, Any]:
         if table == "papers":
-            return {**payload, "id": str(PAPER_ID), "slug": "new-paper", "status": "draft"}
+            assert payload.get("slug")
+            return {**payload, "id": str(PAPER_ID), "status": "draft"}
         return {**payload, "id": uuid4().hex}
 
     async def update_row(
