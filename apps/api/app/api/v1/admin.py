@@ -1,7 +1,7 @@
 from typing import Annotated
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, HTTPException, Request, status
+from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
 
 from app.api.dependencies import AdminPrincipal, require_admin
 from app.models.admin import (
@@ -14,6 +14,7 @@ from app.models.admin import (
     QuestionCreateRequest,
     VideoSourceCreateRequest,
 )
+from app.models.taxonomy import AdminPaperListResponse
 from app.repositories.admin import AdminRepositoryError, SupabaseAdminRepository
 
 router = APIRouter(prefix="/admin", tags=["admin"])
@@ -58,6 +59,40 @@ async def create_paper(
     except AdminRepositoryError as exc:
         raise _http_error(exc) from exc
     return AdminActionResponse(data=paper)
+
+
+@router.get(
+    "/papers",
+    response_model=AdminPaperListResponse,
+    summary="List papers for the admin workspace",
+)
+async def list_admin_papers(
+    request: Request,
+    principal: Annotated[AdminPrincipal, Depends(require_admin)],
+    status_filter: str | None = Query(
+        default=None,
+        alias="status",
+        pattern="^(draft|published|archived)$",
+    ),
+    q: str | None = Query(default=None, min_length=1, max_length=120),
+    page: int = Query(default=1, ge=1),
+    page_size: int = Query(default=20, ge=1, le=50),
+) -> AdminPaperListResponse:
+    del principal
+    repository = SupabaseAdminRepository(request.app.state.supabase)
+    try:
+        papers = await repository.list_papers(
+            status=status_filter,
+            query=q,
+            page=page,
+            page_size=page_size,
+        )
+    except AdminRepositoryError as exc:
+        raise _http_error(exc) from exc
+    return AdminPaperListResponse(
+        data=papers,
+        meta={"page": page, "page_size": page_size, "total": len(papers)},
+    )
 
 
 @router.get(

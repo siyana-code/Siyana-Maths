@@ -15,6 +15,50 @@
         "title": "AdminActionResponse",
         "type": "object"
       },
+      "AdminPaperListMeta": {
+        "properties": {
+          "page": {
+            "title": "Page",
+            "type": "integer"
+          },
+          "page_size": {
+            "title": "Page Size",
+            "type": "integer"
+          },
+          "total": {
+            "title": "Total",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "page",
+          "page_size",
+          "total"
+        ],
+        "title": "AdminPaperListMeta",
+        "type": "object"
+      },
+      "AdminPaperListResponse": {
+        "properties": {
+          "data": {
+            "items": {
+              "additionalProperties": true,
+              "type": "object"
+            },
+            "title": "Data",
+            "type": "array"
+          },
+          "meta": {
+            "$ref": "#/components/schemas/AdminPaperListMeta"
+          }
+        },
+        "required": [
+          "data",
+          "meta"
+        ],
+        "title": "AdminPaperListResponse",
+        "type": "object"
+      },
       "AdminUserResponse": {
         "properties": {
           "display_name": {
@@ -658,6 +702,50 @@
         "title": "SupabaseReadiness",
         "type": "object"
       },
+      "TaxonomyResponse": {
+        "properties": {
+          "exam_years": {
+            "items": {
+              "additionalProperties": true,
+              "type": "object"
+            },
+            "title": "Exam Years",
+            "type": "array"
+          },
+          "levels": {
+            "items": {
+              "additionalProperties": true,
+              "type": "object"
+            },
+            "title": "Levels",
+            "type": "array"
+          },
+          "subjects": {
+            "items": {
+              "additionalProperties": true,
+              "type": "object"
+            },
+            "title": "Subjects",
+            "type": "array"
+          },
+          "topics": {
+            "items": {
+              "additionalProperties": true,
+              "type": "object"
+            },
+            "title": "Topics",
+            "type": "array"
+          }
+        },
+        "required": [
+          "levels",
+          "subjects",
+          "exam_years",
+          "topics"
+        ],
+        "title": "TaxonomyResponse",
+        "type": "object"
+      },
       "ValidationError": {
         "properties": {
           "ctx": {
@@ -783,6 +871,100 @@
       }
     },
     "/api/v1/admin/papers": {
+      "get": {
+        "operationId": "list_admin_papers_api_v1_admin_papers_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "status",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "pattern": "^(draft|published|archived)$",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Status"
+            }
+          },
+          {
+            "in": "query",
+            "name": "q",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "maxLength": 120,
+                  "minLength": 1,
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Q"
+            }
+          },
+          {
+            "in": "query",
+            "name": "page",
+            "required": false,
+            "schema": {
+              "default": 1,
+              "minimum": 1,
+              "title": "Page",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "page_size",
+            "required": false,
+            "schema": {
+              "default": 20,
+              "maximum": 50,
+              "minimum": 1,
+              "title": "Page Size",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AdminPaperListResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "List papers for the admin workspace",
+        "tags": [
+          "admin"
+        ]
+      },
       "post": {
         "operationId": "create_paper_api_v1_admin_papers_post",
         "requestBody": {
@@ -1373,6 +1555,27 @@
         ]
       }
     },
+    "/api/v1/taxonomy": {
+      "get": {
+        "operationId": "get_taxonomy_api_v1_taxonomy_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TaxonomyResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Get Taxonomy",
+        "tags": [
+          "taxonomy"
+        ]
+      }
+    },
     "/health": {
       "get": {
         "operationId": "health_health_get",
@@ -1446,6 +1649,10 @@
     {
       "description": "Public published O/L Mathematics paper catalog.",
       "name": "papers"
+    },
+    {
+      "description": "Public examination levels, subjects, years, and topics.",
+      "name": "taxonomy"
     },
     {
       "description": "Authenticated paper and content management operations.",

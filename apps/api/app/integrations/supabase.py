@@ -139,6 +139,35 @@ class SupabaseGateway:
             return SupabaseStatus(True, False, f"http_{response.status_code}")
         return SupabaseStatus(True, True, "ok")
 
+    async def list_taxonomy(self) -> dict[str, list[dict[str, Any]]]:
+        async def read(table: str, params: dict[str, Any]) -> list[dict[str, Any]]:
+            response = await self.request("GET", self._table_path(table), params=params)
+            rows = response.json()
+            if not isinstance(rows, list):
+                raise SupabaseRequestError(
+                    response.status_code, "Supabase returned an invalid list"
+                )
+            return rows
+
+        return {
+            "levels": await read(
+                "exam_levels",
+                {"select": "id,slug,name_en,name_si,sort_order", "order": "sort_order.asc"},
+            ),
+            "subjects": await read(
+                "subjects",
+                {"select": "id,slug,name_en,name_si,sort_order", "order": "sort_order.asc"},
+            ),
+            "exam_years": await read("exam_years", {"select": "id,year", "order": "year.desc"}),
+            "topics": await read(
+                "topics",
+                {
+                    "select": "id,subject_id,parent_id,slug,name_en,name_si,is_active",
+                    "order": "name_en.asc",
+                },
+            ),
+        }
+
     async def list_published_papers(
         self,
         *,

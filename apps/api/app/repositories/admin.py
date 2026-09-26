@@ -73,6 +73,36 @@ class SupabaseAdminRepository:
         )
         return rows[0] if rows else None
 
+    async def list_papers(
+        self,
+        *,
+        status: str | None = None,
+        query: str | None = None,
+        page: int = 1,
+        page_size: int = 20,
+    ) -> list[dict[str, Any]]:
+        params: dict[str, Any] = {
+            "select": (
+                "id,slug,title,description,status,paper_number,medium,total_marks,"
+                "published_at,created_at,updated_at,level:exam_levels(slug,name_en),"
+                "subject:subjects(slug,name_en),exam_year:exam_years(year)"
+            ),
+            "order": "updated_at.desc",
+            "offset": (page - 1) * page_size,
+            "limit": page_size,
+        }
+        if status:
+            params["status"] = f"eq.{status}"
+        if query:
+            escaped = (
+                query.replace("\\", "\\\\")
+                .replace(",", "\\,")
+                .replace("(", "\\(")
+                .replace(")", "\\)")
+            )
+            params["or"] = f"(title.ilike.*%{escaped}%,description.ilike.*%{escaped}%)"
+        return await self._rows("papers", params)
+
     async def create_paper(self, payload: PaperCreateRequest, admin_id: UUID) -> dict[str, Any]:
         body = payload.model_dump(mode="json", exclude_none=True)
         body.update({"status": "draft", "created_by": str(admin_id), "updated_by": str(admin_id)})

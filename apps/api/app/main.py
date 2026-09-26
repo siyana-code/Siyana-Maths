@@ -38,6 +38,10 @@ def create_app(
             {"name": "health", "description": "Liveness and dependency readiness checks."},
             {"name": "papers", "description": "Public published O/L Mathematics paper catalog."},
             {
+                "name": "taxonomy",
+                "description": "Public examination levels, subjects, years, and topics.",
+            },
+            {
                 "name": "admin",
                 "description": "Authenticated paper and content management operations.",
             },
