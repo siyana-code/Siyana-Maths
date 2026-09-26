@@ -17,6 +17,10 @@ on conflict (slug) do update set
   sort_order = excluded.sort_order,
   is_active = true;
 
+insert into public.exam_years (year)
+values (2025)
+on conflict (year) do nothing;
+
 insert into public.site_settings (
   id,
   site_name,
