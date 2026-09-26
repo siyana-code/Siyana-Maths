@@ -77,9 +77,12 @@ See [docs/DEVELOPMENT.md](docs/DEVELOPMENT.md) for the complete workflow.
 
 ## Local setup
 
-Application setup will be added when `apps/api` and `apps/web` are implemented. Until then, the repository contains the approved product, architecture, API, data-model, security, deployment, and roadmap documentation.
+The repository now contains the API and admin frontend foundations:
 
-Never commit `.env` files, access tokens, service-role keys, or real contact data.
+- [FastAPI service setup](apps/api/README.md)
+- [Next.js frontend setup](apps/web/README.md)
+
+Run the API and frontend separately during local development. Never commit `.env` files, access tokens, service-role keys, or real contact data.
 
 ## Contributing
 
