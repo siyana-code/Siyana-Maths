@@ -158,6 +158,18 @@ def test_non_admin_profile_is_forbidden() -> None:
     assert response.json()["error"]["code"] == "admin_role_required"
 
 
+def test_admin_lists_papers_for_workspace() -> None:
+    with admin_client() as client:
+        response = client.get(
+            "/api/v1/admin/papers?status=draft",
+            headers={"Authorization": "Bearer valid-token"},
+        )
+
+    assert response.status_code == 200
+    assert response.json()["meta"] == {"page": 1, "page_size": 20, "total": 1}
+    assert response.json()["data"][0]["status"] == "draft"
+
+
 def test_admin_can_create_draft_paper() -> None:
     with admin_client() as client:
         response = client.post(
