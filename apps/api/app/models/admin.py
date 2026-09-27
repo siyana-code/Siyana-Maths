@@ -49,6 +49,8 @@ class QuestionCreateRequest(BaseModel):
     position: int | None = Field(default=None, ge=1)
     prompt_markdown: str = Field(min_length=1, max_length=20000)
     marks: Decimal = Field(ge=0, max_digits=8, decimal_places=2)
+    # Set when the editor saves the question and its Sinhala answer together.
+    answer_markdown: str | None = Field(default=None, max_length=50000)
 
 
 class AnswerUpsertRequest(BaseModel):
@@ -125,6 +127,21 @@ class AdminQuestionResponse(BaseModel):
     position: int
     prompt_markdown: str
     marks: Decimal
+
+
+class MediaAsset(BaseModel):
+    """A stored image attached to a question or an answer."""
+
+    id: UUID
+    question_id: UUID | None = None
+    answer_id: UUID | None = None
+    public_url: str
+    caption: str | None = None
+    alt_text: str | None = None
+    mime_type: str
+    byte_size: int
+    position: int = 1
+    created_at: datetime | None = None
 
 
 class AdminActionResponse(BaseModel):

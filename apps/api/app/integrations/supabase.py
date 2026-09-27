@@ -94,6 +94,8 @@ class SupabaseGateway:
         *,
         params: dict[str, Any] | None = None,
         json: dict[str, Any] | None = None,
+        content: bytes | None = None,
+        headers: dict[str, str] | None = None,
         use_service_role: bool = False,
         prefer_count: bool = False,
         prefer_returning: bool = False,
@@ -103,18 +105,22 @@ class SupabaseGateway:
             raise SupabaseNotConfigured("SUPABASE_URL is not configured")
         url = f"{self.settings.supabase_url.rstrip('/')}{path}"
         client = await self._get_client()
+        request_headers = self._headers(
+            use_service_role=use_service_role,
+            prefer_count=prefer_count,
+            prefer_returning=prefer_returning,
+            prefer_resolution=prefer_resolution,
+        )
+        if headers:
+            request_headers.update(headers)
         try:
             response = await client.request(
                 method,
                 url,
                 params=params,
                 json=json,
-                headers=self._headers(
-                    use_service_role=use_service_role,
-                    prefer_count=prefer_count,
-                    prefer_returning=prefer_returning,
-                    prefer_resolution=prefer_resolution,
-                ),
+                content=content,
+                headers=request_headers,
             )
         except httpx.HTTPError as exc:
             raise SupabaseRequestError(None, "Supabase is unreachable") from exc
@@ -284,6 +290,47 @@ class SupabaseGateway:
         if not isinstance(rows, list):
             raise SupabaseRequestError(response.status_code, "Supabase returned an invalid profile")
         return rows[0] if rows else None
+
+    # ---------------------------------------------------------------- storage
+
+    def _storage_object_path(self, bucket: str, object_path: str) -> str:
+        if not bucket.replace("-", "").replace("_", "").isalnum():
+            raise ValueError("Invalid storage bucket name")
+        if not object_path or object_path.startswith("/") or ".." in object_path:
+            raise ValueError("Invalid storage object path")
+        return f"/storage/v1/object/{bucket}/{object_path}"
+
+    def storage_public_url(self, bucket: str, object_path: str) -> str:
+        if not self.settings.supabase_url:
+            raise SupabaseNotConfigured("SUPABASE_URL is not configured")
+        base = self.settings.supabase_url.rstrip("/")
+        return f"{base}/storage/v1/object/public/{bucket}/{object_path}"
+
+    async def upload_object(
+        self,
+        *,
+        bucket: str,
+        object_path: str,
+        body: bytes,
+        content_type: str,
+    ) -> dict[str, Any]:
+        response = await self.request(
+            "POST",
+            self._storage_object_path(bucket, object_path),
+            content=body,
+            headers={"Content-Type": content_type, "x-upsert": "false"},
+            use_service_role=True,
+            prefer_returning=True,
+        )
+        payload = response.json()
+        return payload if isinstance(payload, dict) else {}
+
+    async def delete_object(self, *, bucket: str, object_path: str) -> None:
+        await self.request(
+            "DELETE",
+            self._storage_object_path(bucket, object_path),
+            use_service_role=True,
+        )
 
     async def close(self) -> None:
         if self._owns_client and self._client is not None:

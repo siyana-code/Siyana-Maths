@@ -23,6 +23,8 @@ papers                    (1) ──< paper_parts
 paper_parts               (1) ──< questions
 questions                 (1) ──(1) answers
 questions                 (1) ──< marking_scheme_items
+questions                 (1) ──< media_assets (graphs, sketches)
+answers                   (1) ──< media_assets (working diagrams)
 papers                    (1) ──< video_sources
 questions                 (1) ──< video_sources (optional target)
 papers                    (1) ──< paper_topics >──(1) topics
@@ -217,8 +219,30 @@ Unique constraint: `(question_id, position)`. The backend validates the relation
 
 Use a composite foreign key or equivalent trigger to ensure that a non-null `question_id` belongs to the same paper. Enforce one primary source for the paper scope and one primary source per question scope.
 
-### `site_settings`
+### `media_assets`
 
+Images attached to a question or to its answer: graphs, sketches, and diagrams.
+
+| Column | Type | Notes |
+|---|---|---|
+| `id` | uuid | Primary key |
+| `question_id` | uuid nullable | References `questions`; cascade delete |
+| `answer_id` | uuid nullable | References `answers`; cascade delete |
+| `storage_path` | text | Unique object key inside the storage bucket |
+| `public_url` | text | Public-read URL returned by Storage |
+| `caption` | text nullable | Shown under the image |
+| `alt_text` | text nullable | Accessibility description |
+| `mime_type` | text | Detected from the bytes, not the filename |
+| `byte_size` | bigint | Enforced maximum of 5 MB |
+| `position` | smallint | Display order within the owner |
+| `created_by` | uuid | References `profiles` |
+| `created_at` | timestamptz | UTC |
+
+Check constraint `media_assets_single_owner` requires exactly one of `question_id` or `answer_id`, so an image can never be orphaned or attached twice.
+
+Files live in the public-read `content-media` bucket. The bucket's own `allowed_mime_types` and `file_size_limit` are the first line of defence, and the API additionally sniffs the magic bytes and rejects SVG, which would otherwise be a script-injection vector. Uploads require the service-role key, so anonymous clients cannot write to the bucket.
+
+### `site_settings`
 Singleton configuration for public contact details:
 
 - `site_name`;
@@ -258,6 +282,7 @@ At minimum index:
 - paper parts by `(paper_id, sort_order)`;
 - questions by `(part_id, position)`;
 - answers by `question_id`;
+- media assets by `(question_id, position)` and `(answer_id, position)`;
 - marking-scheme items by `(question_id, position)`;
 - video sources by `paper_id`, `question_id`, and provider;
 - topics by subject and active status;

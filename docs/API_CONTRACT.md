@@ -190,11 +190,16 @@ Creates a question inside one of the paper's parts.
   "part_id": "uuid",
   "number_label": "1",
   "prompt_markdown": "$$...$$",
-  "marks": 2
+  "marks": 2,
+  "answer_markdown": "සොලුමා ගලනය…"
 }
 ```
 
 The API verifies that `part_id` belongs to this paper, assigns the next free `position` inside that part, and rejects the request with `question_limit_reached` (422) once the part already holds `question_count` questions. A `part_id` from another paper returns `paper_part_not_found` (404).
+
+`marks` is always supplied by the client from the part's `marks_per_question`; the admin UI does not let an author type it, and publishing rejects any question whose marks disagree with its part.
+
+`answer_markdown` is optional. When present the answer is created in the same request, so the question editor can save a question and its Sinhala solution together and never leave a question without an answer. The response then includes a nested `answer` object.
 
 ### `PATCH /api/v1/admin/questions/{id}`
 
@@ -264,7 +269,40 @@ Updates URL/provider/primary/position after validation.
 
 Deletes the source.
 
-## 11. Publishing
+## 11. Admin images
+
+Questions and answers can carry graphs, sketches, and diagrams. Images are uploaded from the question editor and stored in the public-read `content-media` bucket.
+
+### `POST /api/v1/admin/media`
+
+`multipart/form-data` with:
+
+| Field | Type | Notes |
+|---|---|---|
+| `file` | file | PNG, JPEG, WebP, or GIF, 5 MB maximum |
+| `question_id` | uuid | Exactly one of `question_id` or `answer_id` |
+| `answer_id` | uuid | Exactly one of `question_id` or `answer_id` |
+| `caption` | text | Optional, 300 characters |
+| `alt_text` | text | Optional, 300 characters |
+
+Returns the created `MediaAsset`. The API sniffs the file's magic bytes rather than trusting `content_type` or the filename.
+
+| Condition | Status | `code` |
+|---|---:|---|
+| Neither or both owners supplied | 422 | `media_owner_required` |
+| Zero bytes | 422 | `media_empty` |
+| Larger than `MEDIA_MAX_BYTES` | 413 | `media_too_large` |
+| Not a PNG, JPEG, WebP, or GIF | 415 | `media_type_not_allowed` |
+| Bytes disagree with the declared type | 415 | `media_type_mismatch` |
+| Owner question or answer missing | 404 | `media_owner_not_found` |
+
+SVG is rejected on purpose: it is an active-content format and would become a stored-XSS vector.
+
+### `DELETE /api/v1/admin/media/{id}`
+
+Removes the storage object and the metadata row. Returns `204`.
+
+## 12. Publishing
 
 ### `POST /api/v1/admin/papers/{id}/publish`
 
@@ -278,7 +316,7 @@ Removes a published paper from public results without deleting its content.
 
 Returns a published paper to draft state if the product workflow requires it.
 
-## 12. Contact
+## 13. Contact
 
 ### `POST /api/v1/contact`
 
@@ -304,7 +342,7 @@ Admin-only list with status and date filters.
 
 Update read/replied/archived/spam status.
 
-## 13. HTTP status guidance
+## 14. HTTP status guidance
 
 - `200` successful read/update.
 - `201` resource created.
@@ -318,7 +356,7 @@ Update read/replied/archived/spam status.
 - `429` rate limit exceeded.
 - `500` unexpected server error; return a request ID only.
 
-## 14. Contract rules
+## 15. Contract rules
 
 - Do not expose draft content through a public endpoint.
 - Never trust a role, creator ID, published timestamp, total mark, or provider embed URL supplied by the browser.

@@ -102,10 +102,24 @@ export type VideoSource = {
   position: number;
 };
 
+export type MediaAsset = {
+  id: UUID;
+  question_id: UUID | null;
+  answer_id: UUID | null;
+  public_url: string;
+  caption: string | null;
+  alt_text: string | null;
+  mime_type: string;
+  byte_size: number;
+  position: number;
+  created_at?: string;
+};
+
 export type PaperBundle = {
   paper: AdminPaper;
   parts: PaperPart[];
   questions: Question[];
+  media_assets: MediaAsset[];
   answers: Answer[];
   marking_scheme_items: MarkingItem[];
   video_sources: VideoSource[];
