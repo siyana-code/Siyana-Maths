@@ -10,6 +10,7 @@ import {
   ArrowBackIcon,
   CheckIcon,
   CloseIcon,
+  EditIcon,
   LinkIcon,
   PlayIcon,
   PlusIcon,
@@ -81,12 +82,6 @@ export function PaperEditor({ paperId }: { paperId: string }) {
     total_marks: "",
   });
   const [answerDrafts, setAnswerDrafts] = useState<AnswerDrafts>({});
-  const [questionDraft, setQuestionDraft] = useState({
-    part_id: "",
-    number_label: "",
-    prompt_markdown: "",
-    marks: "",
-  });
   const [markingDraft, setMarkingDraft] = useState<MarkingDraft>(emptyMarkingDraft());
   const [videoDraft, setVideoDraft] = useState<VideoDraft>(emptyVideoDraft());
 
@@ -111,10 +106,6 @@ export function PaperEditor({ paperId }: { paperId: string }) {
       setMarkingDraft((current) => ({
         ...current,
         questionId: current.questionId || nextBundle.questions[0]?.id || "",
-      }));
-      setQuestionDraft((current) => ({
-        ...current,
-        part_id: current.part_id || nextBundle.parts[0]?.id || "",
       }));
       setFatalError(null);
     } catch (loadError) {
@@ -265,33 +256,6 @@ export function PaperEditor({ paperId }: { paperId: string }) {
         }),
       "Paper details saved.",
     );
-  }
-
-  async function addQuestion(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-    const part = partById[questionDraft.part_id];
-    if (!part) return;
-    const position = (questionsByPart[part.id] ?? []).length + 1;
-    await performAction(
-      "question",
-      () =>
-        apiData<Question>(`/admin/papers/${paperId}/questions`, {
-          method: "POST",
-          body: JSON.stringify({
-            part_id: part.id,
-            number_label: questionDraft.number_label,
-            prompt_markdown: questionDraft.prompt_markdown,
-            marks: Number(questionDraft.marks),
-          }),
-        }),
-      `Added Part ${part.part_code} question ${position}.`,
-    );
-    setQuestionDraft((current) => ({
-      part_id: current.part_id,
-      number_label: "",
-      prompt_markdown: "",
-      marks: String(part.marks_per_question),
-    }));
   }
 
   async function saveAnswer(question: Question) {
@@ -591,6 +555,14 @@ export function PaperEditor({ paperId }: { paperId: string }) {
                           />
 
                           <div className="row">
+                            <Link
+                              className="btn btn--outlined btn--sm"
+                              href={`/admin/papers/${paperId}/questions/${question.id}/edit`}
+                              style={{ textDecoration: "none" }}
+                            >
+                              <EditIcon size={15} />
+                              Open editor
+                            </Link>
                             <Button
                               variant="tonal"
                               size="sm"
@@ -614,76 +586,25 @@ export function PaperEditor({ paperId }: { paperId: string }) {
           })}
         </div>
 
-        <form className="card card--outlined" onSubmit={addQuestion}>
-          <h3 className="t-title-medium">Add a question</h3>
-          <div className="form-grid" style={{ marginTop: 14 }}>
-            <SelectField
-              label="Part"
-              wide
-              required
-              value={questionDraft.part_id}
-              placeholder="Select part"
-              onChange={(event) => {
-                const next = partById[event.target.value];
-                setQuestionDraft((current) => ({
-                  ...current,
-                  part_id: event.target.value,
-                  marks: next ? String(next.marks_per_question) : current.marks,
-                }));
-              }}
+        <div className="card card--outlined">
+          <div className="row-between">
+            <div>
+              <h3 className="t-title-medium" style={{ margin: 0 }}>Add a question</h3>
+              <p className="muted t-body-small" style={{ margin: "4px 0 0" }}>
+                Opens a dedicated screen where the question, Sinhala answer, images, marking
+                scheme, and video are all entered together.
+              </p>
+            </div>
+            <Link
+              className="btn btn--filled"
+              href={`/admin/papers/${paperId}/questions/new`}
+              style={{ textDecoration: "none" }}
             >
-              {bundle.parts.map((part) => (
-                <option key={part.id} value={part.id}>
-                  Part {part.part_code} — {part.title}
-                </option>
-              ))}
-            </SelectField>
-
-            <TextInput
-              label="Number label"
-              required
-              value={questionDraft.number_label}
-              onChange={(event) => setQuestionDraft({ ...questionDraft, number_label: event.target.value })}
-              placeholder="1(a)"
-            />
-
-            <TextInput
-              label="Marks"
-              type="number"
-              min="0"
-              step="0.5"
-              required
-              value={questionDraft.marks}
-              hint={
-                questionDraft.part_id
-                  ? `Part ${partById[questionDraft.part_id]?.part_code} requires ${partById[questionDraft.part_id]?.marks_per_question} marks.`
-                  : "Choose a part first."
-              }
-              onChange={(event) => setQuestionDraft({ ...questionDraft, marks: event.target.value })}
-            />
-
-            <TextAreaField
-              label="Question text or math"
-              wide
-              rows={4}
-              required
-              value={questionDraft.prompt_markdown}
-              onChange={(next) => setQuestionDraft({ ...questionDraft, prompt_markdown: next })}
-            />
+              <PlusIcon size={16} />
+              New question
+            </Link>
           </div>
-
-          <div className="row" style={{ justifyContent: "flex-end", marginTop: 16 }}>
-            <Button
-              type="submit"
-              variant="filled"
-              icon={<PlusIcon size={16} />}
-              loading={busy === "question"}
-              disabled={!questionDraft.part_id}
-            >
-              {busy === "question" ? "Adding" : "Add question"}
-            </Button>
-          </div>
-        </form>
+        </div>
       </section>
 
       {/* Step 4 — marking scheme */}

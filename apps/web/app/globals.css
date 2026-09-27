@@ -632,11 +632,13 @@ svg {
 
 .field-input {
   width: 100%;
-  min-height: 56px;
-  padding: 18px 16px 8px;
+  min-height: 58px;
+  /* Top padding must clear the shrunk floating label, which sits at 4px–16px. */
+  padding: 20px 16px 8px;
   border: 1px solid var(--md-outline);
   border-radius: var(--md-shape-xs);
   background: transparent;
+  color: var(--md-on-surface);
   transition:
     border-color var(--md-duration-short4) var(--md-easing-standard),
     box-shadow var(--md-duration-short4) var(--md-easing-standard);
@@ -650,7 +652,7 @@ select.field-input {
 
 textarea.field-input {
   min-height: 96px;
-  padding-top: 24px;
+  padding-top: 26px;
   line-height: 1.45;
   resize: vertical;
 }
@@ -673,12 +675,14 @@ textarea.field-input {
 
 .field-floating {
   position: absolute;
-  top: 17px;
+  top: 18px;
   left: 12px;
   padding: 0 4px;
   color: var(--md-on-surface-variant);
   background: var(--md-field-bg);
   font-size: 1rem;
+  /* A compact line box keeps the active label clear of the value text. */
+  line-height: 1;
   pointer-events: none;
   transform-origin: left center;
   transition:
@@ -687,7 +691,7 @@ textarea.field-input {
 }
 
 .field-floating--textarea {
-  top: 22px;
+  top: 24px;
 }
 
 .field-control--filled {
@@ -703,7 +707,7 @@ textarea.field-input {
 }
 
 .field-floating--active {
-  transform: scale(0.75) translateY(-9px);
+  transform: scale(0.75) translateY(-16px);
 }
 
 .field-hint {
@@ -1536,6 +1540,22 @@ code {
   }
 }
 
+@media (max-width: 900px) {
+  .math-panel__body {
+    grid-template-columns: 1fr;
+  }
+  .math-tabs {
+    display: flex;
+    border-right: none;
+    border-bottom: 1px solid var(--md-outline-variant);
+    overflow-x: auto;
+  }
+  .math-panel__foot {
+    flex-direction: column;
+    align-items: stretch;
+  }
+}
+
 @media (max-width: 760px) {
   .form-grid {
     grid-template-columns: 1fr;
@@ -1571,9 +1591,294 @@ code {
     right: 16px;
     bottom: 16px;
   }
+  .media-grid {
+    grid-template-columns: 1fr;
+  }
+  .shape-card {
+    width: 100%;
+  }
 }
 
-/* ---------- 26. Reduced motion ---------- */
+/* ---------- 26. Math rendering ---------- */
+
+.math-render {
+  color: inherit;
+}
+.math-render--display {
+  display: block;
+  overflow-x: auto;
+  overflow-y: hidden;
+  padding: 4px 0;
+}
+.math-fallback {
+  display: inline-block;
+  padding: 2px 6px;
+  border-radius: var(--md-shape-xs);
+  background: var(--md-error-container);
+  color: var(--md-on-error-container);
+  font-size: 0.8125em;
+  overflow-wrap: anywhere;
+}
+
+.math-preview {
+  min-height: 40px;
+  padding: 12px 14px;
+  border-radius: var(--md-shape-s);
+  background: var(--md-surface-container);
+  overflow-x: auto;
+}
+.math-preview--boxed {
+  border: 1px solid var(--md-outline-variant);
+  background: var(--md-surface-container-lowest);
+}
+
+/* ---------- 27. Math helper panel ---------- */
+
+.math-scrim {
+  place-items: stretch;
+  padding: 16px;
+}
+
+.math-panel {
+  display: flex;
+  flex-direction: column;
+  width: min(1080px, 100%);
+  max-height: calc(100vh - 32px);
+  margin: auto;
+  border-radius: var(--md-shape-xl);
+  background: var(--md-surface);
+  box-shadow: var(--md-elevation-4);
+  overflow: hidden;
+  animation: md-dialog-in var(--md-duration-medium2) var(--md-easing-emphasized) both;
+}
+
+.math-panel__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 12px 16px;
+  border-bottom: 1px solid var(--md-outline-variant);
+}
+
+.math-panel__body {
+  display: grid;
+  grid-template-columns: 132px minmax(0, 1fr);
+  min-height: 0;
+  flex: 1;
+}
+
+.math-panel__content {
+  min-height: 0;
+  overflow-y: auto;
+  padding: 16px;
+}
+
+.math-panel__foot {
+  display: flex;
+  align-items: flex-end;
+  gap: 16px;
+  padding: 16px;
+  border-top: 1px solid var(--md-outline-variant);
+  background: var(--md-surface-container-low);
+}
+
+.math-tabs {
+  display: grid;
+  align-content: start;
+  gap: 4px;
+  padding: 12px 8px;
+  border-right: 1px solid var(--md-outline-variant);
+  background: var(--md-surface-container-low);
+}
+
+.math-tab {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 12px;
+  border: none;
+  border-radius: var(--md-shape-full);
+  color: var(--md-on-surface-variant);
+  font-size: 0.8125rem;
+  font-weight: 500;
+  text-align: left;
+  cursor: pointer;
+  transition: background-color var(--md-duration-short4) var(--md-easing-standard);
+}
+
+.math-tab:hover {
+  background: color-mix(in srgb, var(--md-on-surface) 8%, transparent);
+}
+
+.math-tab--active {
+  color: var(--md-on-secondary-container);
+  background: var(--md-secondary-container);
+}
+
+.math-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(52px, 1fr));
+  gap: 8px;
+}
+
+.math-key {
+  display: grid;
+  place-items: center;
+  min-height: 48px;
+  padding: 4px;
+  border: 1px solid var(--md-outline-variant);
+  border-radius: var(--md-shape-s);
+  background: var(--md-surface);
+  color: var(--md-on-surface);
+  font-size: 1.05rem;
+  line-height: 1;
+  cursor: pointer;
+  transition:
+    background-color var(--md-duration-short4) var(--md-easing-standard),
+    border-color var(--md-duration-short4) var(--md-easing-standard),
+    transform var(--md-duration-short4) var(--md-easing-standard);
+}
+
+.math-key:hover {
+  border-color: var(--md-primary);
+  background: var(--md-primary-container-low);
+  transform: translateY(-1px);
+}
+
+.math-key:active {
+  transform: scale(0.94);
+}
+
+.shape-card {
+  display: grid;
+  gap: 6px;
+  width: 168px;
+  padding: 10px;
+  border: 1px solid var(--md-outline-variant);
+  border-radius: var(--md-shape-m);
+  background: var(--md-surface);
+  color: var(--md-on-surface);
+  text-align: left;
+  cursor: pointer;
+  transition:
+    border-color var(--md-duration-short4) var(--md-easing-standard),
+    box-shadow var(--md-duration-short4) var(--md-easing-standard),
+    transform var(--md-duration-short4) var(--md-easing-standard);
+}
+
+.shape-card:hover {
+  border-color: var(--md-primary);
+  box-shadow: var(--md-elevation-1);
+  transform: translateY(-2px);
+}
+
+.shape-card__preview {
+  display: grid;
+  place-items: center;
+  padding: 6px;
+  border-radius: var(--md-shape-s);
+  background: var(--md-surface-container);
+  color: var(--md-on-surface);
+}
+
+.shape-card__label {
+  color: var(--md-on-surface-variant);
+  font-size: 0.6875rem;
+  line-height: 1.33;
+}
+
+.math-source {
+  width: 100%;
+  min-height: 64px;
+  padding: 8px 10px;
+  border: 1px solid var(--md-outline-variant);
+  border-radius: var(--md-shape-s);
+  background: var(--md-surface);
+  color: var(--md-on-surface);
+  font-family: ui-monospace, "SFMono-Regular", "Cascadia Mono", Menlo, monospace;
+  font-size: 0.75rem;
+  line-height: 1.45;
+  resize: vertical;
+}
+
+.math-source:focus {
+  outline: none;
+  border-color: var(--md-primary);
+  box-shadow: inset 0 0 0 1px var(--md-primary);
+}
+
+/* ---------- 28. Images ---------- */
+
+.dropzone {
+  display: grid;
+  justify-items: center;
+  gap: 6px;
+  padding: 24px 16px;
+  border: 2px dashed var(--md-outline-variant);
+  border-radius: var(--md-shape-m);
+  background: var(--md-surface-container-lowest);
+  text-align: center;
+  cursor: pointer;
+  transition:
+    border-color var(--md-duration-short4) var(--md-easing-standard),
+    background-color var(--md-duration-short4) var(--md-easing-standard);
+}
+
+.dropzone:hover,
+.dropzone:focus-visible {
+  border-color: var(--md-primary);
+  background: var(--md-primary-container-low);
+}
+
+.dropzone--active {
+  border-color: var(--md-primary);
+  background: var(--md-primary-container);
+}
+
+.media-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+  gap: 12px;
+}
+
+.media-card {
+  position: relative;
+  margin: 0;
+  border: 1px solid var(--md-outline-variant);
+  border-radius: var(--md-shape-m);
+  background: var(--md-surface);
+  overflow: hidden;
+  transition: box-shadow var(--md-duration-short4) var(--md-easing-standard);
+}
+
+.media-card:hover {
+  box-shadow: var(--md-elevation-1);
+}
+
+.media-card img {
+  display: block;
+  width: 100%;
+  height: 140px;
+  object-fit: contain;
+  background: var(--md-surface-container);
+}
+
+.media-card figcaption {
+  padding: 8px 10px;
+  color: var(--md-on-surface-variant);
+  font-size: 0.6875rem;
+  line-height: 1.33;
+}
+
+.media-card .btn {
+  position: absolute;
+  top: 6px;
+  right: 6px;
+  background: color-mix(in srgb, var(--md-surface) 88%, transparent);
+}
+
+/* ---------- 29. Reduced motion ---------- */
 
 @media (prefers-reduced-motion: reduce) {
   *,

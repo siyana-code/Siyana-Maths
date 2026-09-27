@@ -214,6 +214,67 @@ export function ArrowBackIcon(props: IconProps) {
   );
 }
 
+export function CopyIcon(props: IconProps) {
+  return (
+    <Svg {...props}>
+      <rect x="8.5" y="8.5" width="12" height="12" rx="2" />
+      <path d="M15.5 5.5v-1a1 1 0 0 0-1-1h-10a1 1 0 0 0-1 1v10a1 1 0 0 0 1 1h1" />
+    </Svg>
+  );
+}
+
+export function DeleteIcon(props: IconProps) {
+  return (
+    <Svg {...props}>
+      <path d="M4 6.5h16" />
+      <path d="M9.5 6.5V4.8a1 1 0 0 1 1-1h3a1 1 0 0 1 1 1v1.7" />
+      <path d="M6.5 6.5 7.4 19a1.5 1.5 0 0 0 1.5 1.4h6.2a1.5 1.5 0 0 0 1.5-1.4l.9-12.5" />
+      <path d="M10.5 10v6.5M13.5 10v6.5" />
+    </Svg>
+  );
+}
+
+export function FunctionIcon(props: IconProps) {
+  return (
+    <Svg {...props}>
+      <path d="M5 20c1.5-3 2-5.5 2.8-8 .8-2.6 1.6-5 2.7-7" />
+      <path d="M4 12h7" />
+      <path d="M15 9.5c1.4-1.2 3.3-.4 3.3 1.3 0 2-2.4 4.6-5 6.2 2.8.2 5 1 6 2.5" />
+    </Svg>
+  );
+}
+
+export function ShapeIcon(props: IconProps) {
+  return (
+    <Svg {...props}>
+      <circle cx="7.5" cy="7.5" r="3" />
+      <rect x="13" y="13" width="8" height="8" rx="1" />
+      <path d="M17 3.5 21 11h-8z" />
+    </Svg>
+  );
+}
+
+export function ImageIcon(props: IconProps) {
+  return (
+    <Svg {...props}>
+      <rect x="3" y="4.5" width="18" height="15" rx="2.5" />
+      <circle cx="8.75" cy="9.75" r="1.75" />
+      <path d="m3.5 17 4.8-4.8a2 2 0 0 1 2.8 0L16 17" />
+      <path d="m13.5 14.5 1.7-1.7a2 2 0 0 1 2.8 0l2.5 2.5" />
+    </Svg>
+  );
+}
+
+export function UploadIcon(props: IconProps) {
+  return (
+    <Svg {...props}>
+      <path d="M12 16V4" />
+      <path d="m7.5 8.5 4.5-4.5 4.5 4.5" />
+      <path d="M4 15v3.5A1.5 1.5 0 0 0 5.5 20h13a1.5 1.5 0 0 0 1.5-1.5V15" />
+    </Svg>
+  );
+}
+
 export function MenuIcon(props: IconProps) {
   return (
     <Svg {...props}>

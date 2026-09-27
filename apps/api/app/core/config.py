@@ -18,6 +18,11 @@ class Settings(BaseSettings):
     supabase_jwt_audience: str = "authenticated"
     supabase_timeout_seconds: float = Field(default=5.0, gt=0, le=30)
 
+    # Question and answer images (graphs, sketches, diagrams).
+    media_bucket: str = "content-media"
+    media_max_bytes: int = Field(default=5 * 1024 * 1024, gt=0)
+    media_allowed_mime_types: str = "image/png,image/jpeg,image/webp,image/gif"
+
     allowed_origins: str = "http://localhost:3000,http://127.0.0.1:3000"
     log_level: str = "INFO"
 
@@ -46,6 +51,10 @@ class Settings(BaseSettings):
     def supabase_write_configured(self) -> bool:
         """Whether privileged Supabase writes can be used."""
         return bool(self.supabase_url and self.supabase_service_role_key)
+
+    @property
+    def media_mime_types(self) -> list[str]:
+        return [item.strip() for item in self.media_allowed_mime_types.split(",") if item.strip()]
 
     def missing_public_supabase_settings(self) -> list[str]:
         missing: list[str] = []

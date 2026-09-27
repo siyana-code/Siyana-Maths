@@ -193,7 +193,7 @@ class SupabaseAdminRepository:
         )
         if not parts:
             raise AdminRepositoryError("paper_part_not_found", "Paper part not found.", 404)
-        body = payload.model_dump(mode="json", exclude_none=True)
+        body = payload.model_dump(mode="json", exclude_none=True, exclude={"answer_markdown"})
         position = body.get("position") or await self._next_position(
             "questions", "part_id", payload.part_id
         )
@@ -211,7 +211,7 @@ class SupabaseAdminRepository:
             }
         )
         try:
-            return await self.gateway.insert_row("questions", body, use_service_role=True)
+            question = await self.gateway.insert_row("questions", body, use_service_role=True)
         except SupabaseRequestError as exc:
             raise AdminRepositoryError(
                 "question_create_failed",
@@ -219,6 +219,17 @@ class SupabaseAdminRepository:
                 409,
                 {"upstream_status": exc.status_code},
             ) from exc
+
+        # The question editor saves the question and its Sinhala answer together,
+        # so create the answer in the same call rather than leaving a bare question.
+        if payload.answer_markdown and payload.answer_markdown.strip():
+            question_id = UUID(str(question["id"]))
+            answer = await self.upsert_answer(
+                question_id,
+                AnswerUpsertRequest(solution_markdown=payload.answer_markdown),
+            )
+            question = {**question, "answer": answer}
+        return question
 
     async def upsert_answer(
         self, question_id: UUID, payload: AnswerUpsertRequest
@@ -305,6 +316,7 @@ class SupabaseAdminRepository:
         question_ids = [str(question["id"]) for question in questions]
         answers: list[dict[str, Any]] = []
         marking_items: list[dict[str, Any]] = []
+        media: list[dict[str, Any]] = []
         if question_ids:
             joined_ids = ",".join(question_ids)
             answers = await self._rows("answers", {"question_id": f"in.({joined_ids})"})
@@ -312,6 +324,16 @@ class SupabaseAdminRepository:
                 "marking_scheme_items",
                 {"question_id": f"in.({joined_ids})", "order": "position.asc"},
             )
+            # Media hangs off answers, so resolve it through the answer IDs.
+            answer_ids = ",".join(str(answer["id"]) for answer in answers)
+            if answer_ids:
+                media = await self._rows(
+                    "media_assets",
+                    {
+                        "or": (f"question_id.in.({joined_ids}),answer_id.in.({answer_ids})"),
+                        "order": "position.asc",
+                    },
+                )
         videos = await self._rows(
             "video_sources", {"paper_id": f"eq.{paper_id}", "order": "position.asc"}
         )
@@ -321,6 +343,7 @@ class SupabaseAdminRepository:
             "questions": questions,
             "answers": answers,
             "marking_scheme_items": marking_items,
+            "media_assets": media,
             "video_sources": videos,
         }
 
