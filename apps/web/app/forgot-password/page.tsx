@@ -3,6 +3,10 @@
 import Link from "next/link";
 import { FormEvent, useState } from "react";
 
+import { Button } from "@/components/ui/Button";
+import { TextInput } from "@/components/ui/Field";
+import { AlertIcon, CheckCircleIcon } from "@/components/ui/Icons";
+import { Brand } from "@/components/ui/Primitives";
 import { createClient } from "@/lib/supabase/client";
 
 export default function ForgotPasswordPage() {
@@ -36,18 +40,16 @@ export default function ForgotPasswordPage() {
   return (
     <main className="auth-shell">
       <section className="auth-card" aria-labelledby="forgot-heading">
-        <Link className="brand" href="/">
-          Siyana Maths
-        </Link>
-        <p className="eyebrow">Admin access</p>
+        <Brand href="/" subtitle="Admin access" />
+        <div style={{ height: 20 }} />
         <h1 id="forgot-heading">Reset your password</h1>
         <p className="muted">
           Enter your admin email and we will send a link to set a new password.
         </p>
+
         <form className="stack-form" onSubmit={handleSubmit}>
-          <label htmlFor="email">Email address</label>
-          <input
-            id="email"
+          <TextInput
+            label="Email address"
             name="email"
             type="email"
             autoComplete="email"
@@ -55,13 +57,27 @@ export default function ForgotPasswordPage() {
             value={email}
             onChange={(event) => setEmail(event.target.value)}
           />
-          {error ? <p className="form-error" role="alert">{error}</p> : null}
-          {notice ? <p className="form-success" role="status">{notice}</p> : null}
-          <button className="button button-primary" type="submit" disabled={submitting}>
-            {submitting ? "Sending…" : "Send reset link"}
-          </button>
+
+          {error ? (
+            <p className="banner banner--error">
+              <AlertIcon size={18} />
+              <span>{error}</span>
+            </p>
+          ) : null}
+
+          {notice ? (
+            <p className="banner banner--success">
+              <CheckCircleIcon size={18} />
+              <span>{notice}</span>
+            </p>
+          ) : null}
+
+          <Button type="submit" variant="filled" loading={submitting} block>
+            {submitting ? "Sending" : "Send reset link"}
+          </Button>
         </form>
-        <div className="inline-actions">
+
+        <div className="row" style={{ marginTop: 20 }}>
           <Link className="text-link" href="/login">
             Back to sign in
           </Link>

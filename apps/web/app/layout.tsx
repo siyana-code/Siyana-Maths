@@ -1,5 +1,16 @@
 import type { Metadata } from "next";
+import { Roboto } from "next/font/google";
+
+import { SnackbarProvider } from "@/components/ui/Snackbar";
+
 import "./globals.css";
+
+const roboto = Roboto({
+  subsets: ["latin"],
+  weight: ["400", "500", "700"],
+  display: "swap",
+  variable: "--font-roboto",
+});
 
 export const metadata: Metadata = {
   title: {
@@ -15,8 +26,10 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en">
-      <body>{children}</body>
+    <html lang="en" className={roboto.variable}>
+      <body style={{ fontFamily: "var(--font-roboto), system-ui, sans-serif" }}>
+        <SnackbarProvider>{children}</SnackbarProvider>
+      </body>
     </html>
   );
 }
