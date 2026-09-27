@@ -9,6 +9,7 @@ import {
   Answer,
   MarkingItem,
   PaperBundle,
+  PaperPart,
   Question,
 } from "@/lib/types";
 
@@ -61,6 +62,7 @@ export function PaperEditor({ paperId }: { paperId: string }) {
   });
   const [answerDrafts, setAnswerDrafts] = useState<AnswerDrafts>({});
   const [questionDraft, setQuestionDraft] = useState({
+    part_id: "",
     number_label: "",
     prompt_markdown: "",
     marks: "",
@@ -90,6 +92,10 @@ export function PaperEditor({ paperId }: { paperId: string }) {
         ...current,
         questionId: current.questionId || nextBundle.questions[0]?.id || "",
       }));
+      setQuestionDraft((current) => ({
+        ...current,
+        part_id: current.part_id || nextBundle.parts[0]?.id || "",
+      }));
       setError(null);
     } catch (loadError) {
       setError(loadError instanceof ApiError ? loadError.message : "Unable to load this paper.");
@@ -117,6 +123,28 @@ export function PaperEditor({ paperId }: { paperId: string }) {
     });
     return result;
   }, [bundle]);
+
+  const partById = useMemo(() => {
+    const result: Record<string, PaperPart> = {};
+    bundle?.parts.forEach((part) => {
+      result[part.id] = part;
+    });
+    return result;
+  }, [bundle]);
+
+  const questionsByPart = useMemo(() => {
+    const result: Record<string, Question[]> = {};
+    bundle?.questions.forEach((question) => {
+      const key = question.part_id ?? "";
+      result[key] = [...(result[key] ?? []), question];
+    });
+    return result;
+  }, [bundle]);
+
+  function partLabel(partId: string) {
+    const part = partById[partId];
+    return part ? `Part ${part.part_code} — ${part.title}` : "Unassigned part";
+  }
 
   async function performAction(key: string, action: () => Promise<unknown>, message: string) {
     setBusy(key);
@@ -160,6 +188,7 @@ export function PaperEditor({ paperId }: { paperId: string }) {
         apiData<Question>(`/admin/papers/${paperId}/questions`, {
           method: "POST",
           body: JSON.stringify({
+            part_id: questionDraft.part_id,
             number_label: questionDraft.number_label,
             prompt_markdown: questionDraft.prompt_markdown,
             marks: Number(questionDraft.marks),
@@ -167,7 +196,12 @@ export function PaperEditor({ paperId }: { paperId: string }) {
         }),
       "Question added.",
     );
-    setQuestionDraft({ number_label: "", prompt_markdown: "", marks: "" });
+    setQuestionDraft((current) => ({
+      part_id: current.part_id,
+      number_label: "",
+      prompt_markdown: "",
+      marks: "",
+    }));
   }
 
   async function saveAnswer(question: Question) {
@@ -272,6 +306,48 @@ export function PaperEditor({ paperId }: { paperId: string }) {
         <div className="section-heading">
           <div>
             <p className="eyebrow">Step 1</p>
+            <h2>Paper structure</h2>
+          </div>
+        </div>
+        {bundle.parts.length === 0 ? (
+          <p className="form-error" role="alert">
+            This paper has no parts. Check the exam year paper number (I or II) and reload.
+          </p>
+        ) : (
+          <div className="stack-sm">
+            {bundle.parts.map((part) => {
+              const added = (questionsByPart[part.id] ?? []).length;
+              return (
+                <div className="source-row" key={part.id}>
+                  <div>
+                    <strong>Part {part.part_code}</strong>
+                    <span className="muted"> · {part.title}</span>
+                    <p className="muted">
+                      {added} / {part.question_count} questions · {part.marks_per_question} marks each ·{" "}
+                      {part.selection_limit < part.question_count
+                        ? `answer any ${part.selection_limit} of ${part.question_count}`
+                        : "all questions answered"}{" "}
+                      · part total {part.total_marks} marks
+                    </p>
+                  </div>
+                  <span className={added === part.question_count ? "status-badge status-published" : "status-badge"}>
+                    {added === part.question_count ? "Complete" : "Incomplete"}
+                  </span>
+                </div>
+              );
+            })}
+            <p className="muted">
+              Publishing requires every part to have all of its questions, a Sinhala answer and a complete
+              marking scheme for each question, and at least one video source. Paper total must equal 100 marks.
+            </p>
+          </div>
+        )}
+      </section>
+
+      <section className="editor-card">
+        <div className="section-heading">
+          <div>
+            <p className="eyebrow">Step 2</p>
             <h2>Paper details</h2>
           </div>
         </div>
@@ -282,7 +358,11 @@ export function PaperEditor({ paperId }: { paperId: string }) {
           </div>
           <div className="field">
             <label htmlFor="edit-paper-number">Paper number</label>
-            <input id="edit-paper-number" value={metadata.paper_number} onChange={(event) => setMetadata({ ...metadata, paper_number: event.target.value })} required />
+            <select id="edit-paper-number" value={metadata.paper_number} onChange={(event) => setMetadata({ ...metadata, paper_number: event.target.value })} required>
+              <option value="I">Paper I</option>
+              <option value="II">Paper II</option>
+            </select>
+            <span className="field-hint">Parts are created automatically when the paper is created.</span>
           </div>
           <div className="field">
             <label htmlFor="edit-medium">Medium</label>
@@ -311,52 +391,95 @@ export function PaperEditor({ paperId }: { paperId: string }) {
       <section className="editor-card">
         <div className="section-heading">
           <div>
-            <p className="eyebrow">Step 2</p>
+            <p className="eyebrow">Step 3</p>
             <h2>Questions and Sinhala answers</h2>
           </div>
           <span className="count-badge">{bundle.questions.length} questions</span>
         </div>
         <div className="stack-lg">
-          {bundle.questions.map((question) => (
-            <article className="question-editor" key={question.id}>
-              <div className="row-heading">
-                <h3>Question {question.number_label}</h3>
-                <span className="mark-badge">{question.marks} marks</span>
-              </div>
-              <p className="content-preview">{question.prompt_markdown}</p>
-              <label htmlFor={`answer-${question.id}`}>Sinhala solution</label>
-              <textarea
-                id={`answer-${question.id}`}
-                rows={6}
-                value={answerDrafts[question.id] ?? ""}
-                onChange={(event) => setAnswerDrafts({ ...answerDrafts, [question.id]: event.target.value })}
-                placeholder="Enter the Sinhala solution and working."
-              />
-              <div className="inline-actions">
-                <button className="button button-secondary" type="button" onClick={() => void saveAnswer(question)} disabled={busy === `answer-${question.id}`}>
-                  {busy === `answer-${question.id}` ? "Saving…" : answersByQuestion[question.id] ? "Update answer" : "Save answer"}
-                </button>
-              </div>
-            </article>
-          ))}
+          {bundle.parts.map((part) => {
+            const partQuestions = questionsByPart[part.id] ?? [];
+            return (
+              <section className="part-block" key={part.id}>
+                <div className="section-heading">
+                  <h3>Part {part.part_code} — {part.title}</h3>
+                  <span className="count-badge">
+                    {partQuestions.length} / {part.question_count}
+                  </span>
+                </div>
+                {partQuestions.length === 0 ? (
+                  <p className="muted">No questions in this part yet.</p>
+                ) : (
+                  <div className="stack-lg">
+                    {partQuestions.map((question) => (
+                      <article className="question-editor" key={question.id}>
+                        <div className="row-heading">
+                          <h4>Question {question.number_label}</h4>
+                          <span className="mark-badge">{question.marks} marks</span>
+                        </div>
+                        <p className="content-preview">{question.prompt_markdown}</p>
+                        <label htmlFor={`answer-${question.id}`}>Sinhala solution</label>
+                        <textarea
+                          id={`answer-${question.id}`}
+                          rows={6}
+                          value={answerDrafts[question.id] ?? ""}
+                          onChange={(event) => setAnswerDrafts({ ...answerDrafts, [question.id]: event.target.value })}
+                          placeholder="Enter the Sinhala solution and working."
+                        />
+                        <div className="inline-actions">
+                          <button className="button button-secondary" type="button" onClick={() => void saveAnswer(question)} disabled={busy === `answer-${question.id}`}>
+                            {busy === `answer-${question.id}` ? "Saving…" : answersByQuestion[question.id] ? "Update answer" : "Save answer"}
+                          </button>
+                        </div>
+                      </article>
+                    ))}
+                  </div>
+                )}
+              </section>
+            );
+          })}
         </div>
         <form className="add-item-form" onSubmit={addQuestion}>
           <h3>Add a question</h3>
           <div className="form-grid">
+            <div className="field field-wide">
+              <label htmlFor="question-part">Part</label>
+              <select id="question-part" required value={questionDraft.part_id} onChange={(event) => setQuestionDraft({ ...questionDraft, part_id: event.target.value })}>
+                <option value="">Select part</option>
+                {bundle.parts.map((part) => (
+                  <option key={part.id} value={part.id}>
+                    Part {part.part_code} — {part.title} ({part.marks_per_question} marks each)
+                  </option>
+                ))}
+              </select>
+            </div>
             <div className="field">
               <label htmlFor="question-number">Number label</label>
               <input id="question-number" required value={questionDraft.number_label} onChange={(event) => setQuestionDraft({ ...questionDraft, number_label: event.target.value })} placeholder="1(a)" />
             </div>
             <div className="field">
               <label htmlFor="question-marks">Marks</label>
-              <input id="question-marks" required type="number" min="0" step="0.5" value={questionDraft.marks} onChange={(event) => setQuestionDraft({ ...questionDraft, marks: event.target.value })} />
+              <input
+                id="question-marks"
+                required
+                type="number"
+                min="0"
+                step="0.5"
+                value={questionDraft.marks}
+                onChange={(event) => setQuestionDraft({ ...questionDraft, marks: event.target.value })}
+              />
+              {questionDraft.part_id ? (
+                <span className="field-hint">
+                  Part {partById[questionDraft.part_id]?.part_code} requires {partById[questionDraft.part_id]?.marks_per_question} marks.
+                </span>
+              ) : null}
             </div>
             <div className="field field-wide">
               <label htmlFor="question-prompt">Question text/math</label>
               <textarea id="question-prompt" required rows={4} value={questionDraft.prompt_markdown} onChange={(event) => setQuestionDraft({ ...questionDraft, prompt_markdown: event.target.value })} />
             </div>
           </div>
-          <button className="button button-secondary" type="submit" disabled={busy === "question"}>
+          <button className="button button-secondary" type="submit" disabled={busy === "question" || !questionDraft.part_id}>
             {busy === "question" ? "Adding…" : "Add question"}
           </button>
         </form>
@@ -365,7 +488,7 @@ export function PaperEditor({ paperId }: { paperId: string }) {
       <section className="editor-card">
         <div className="section-heading">
           <div>
-            <p className="eyebrow">Step 3</p>
+            <p className="eyebrow">Step 4</p>
             <h2>Full marking scheme</h2>
           </div>
         </div>
@@ -400,7 +523,11 @@ export function PaperEditor({ paperId }: { paperId: string }) {
               <label htmlFor="marking-question">Question</label>
               <select id="marking-question" required value={markingDraft.questionId} onChange={(event) => setMarkingDraft({ ...markingDraft, questionId: event.target.value })}>
                 <option value="">Select question</option>
-                {bundle.questions.map((question) => <option key={question.id} value={question.id}>Question {question.number_label}</option>)}
+                {bundle.questions.map((question) => (
+                  <option key={question.id} value={question.id}>
+                    {partLabel(question.part_id)} — Question {question.number_label}
+                  </option>
+                ))}
               </select>
             </div>
             <div className="field">
@@ -435,22 +562,36 @@ export function PaperEditor({ paperId }: { paperId: string }) {
       <section className="editor-card">
         <div className="section-heading">
           <div>
-            <p className="eyebrow">Step 4</p>
+            <p className="eyebrow">Step 5</p>
             <h2>Video sources</h2>
           </div>
         </div>
         <div className="stack-sm">
           {bundle.video_sources.length === 0 ? <p className="muted">No video sources yet.</p> : null}
-          {bundle.video_sources.map((source) => (
-            <div className="source-row" key={source.id}>
-              <div>
-                <strong>{source.provider}</strong>
-                {source.question_id ? <span className="muted"> · question-specific</span> : <span className="muted"> · whole paper</span>}
-                <p className="source-url">{source.original_url}</p>
+          {bundle.video_sources.map((source) => {
+            const question = bundle.questions.find((item) => item.id === source.question_id);
+            return (
+              <div className="source-row" key={source.id}>
+                <div>
+                  <strong>{source.provider}</strong>
+                  {question ? (
+                    <span className="muted">
+                      {" "}
+                      · {partLabel(question.part_id)} — Question {question.number_label}
+                    </span>
+                  ) : (
+                    <span className="muted"> · whole paper</span>
+                  )}
+                  <p className="source-url">{source.original_url}</p>
+                </div>
+                {source.is_primary ? <span className="status-badge status-published">Primary</span> : null}
               </div>
-              {source.is_primary ? <span className="status-badge status-published">Primary</span> : null}
-            </div>
-          ))}
+            );
+          })}
+          <p className="muted">
+            Attach one video per question. Videos are being added in this order: Paper I Part A, then Paper I
+            Part B, then Paper II.
+          </p>
         </div>
         <form className="add-item-form" onSubmit={addVideo}>
           <h3>Add a video source</h3>
@@ -467,7 +608,11 @@ export function PaperEditor({ paperId }: { paperId: string }) {
               <label htmlFor="video-question">Attach to</label>
               <select id="video-question" value={videoDraft.questionId} onChange={(event) => setVideoDraft({ ...videoDraft, questionId: event.target.value })}>
                 <option value="">Whole paper</option>
-                {bundle.questions.map((question) => <option key={question.id} value={question.id}>Question {question.number_label}</option>)}
+                {bundle.questions.map((question) => (
+                  <option key={question.id} value={question.id}>
+                    {partLabel(question.part_id)} — Question {question.number_label}
+                  </option>
+                ))}
               </select>
             </div>
             <div className="field field-wide">

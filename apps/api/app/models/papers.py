@@ -6,6 +6,19 @@ from uuid import UUID
 from pydantic import BaseModel, ConfigDict, Field
 
 
+class PaperPart(BaseModel):
+    id: UUID
+    paper_id: UUID
+    part_code: str
+    title: str
+    part_type: str
+    question_count: int
+    selection_limit: int
+    marks_per_question: Decimal
+    total_marks: Decimal
+    sort_order: int
+
+
 class PaperSummary(BaseModel):
     model_config = ConfigDict(extra="ignore")
 

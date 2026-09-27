@@ -1,7 +1,7 @@
 # Data Model — Supabase MVP
 
-**Status:** Logical design baseline; SQL migration names and final constraints to be implemented in Phase 2
-**Last updated:** 2026-09-23
+**Status:** Implemented in `202609240001_initial_schema.sql` and `202609270001_paper_parts.sql`
+**Last updated:** 2026-09-27
 
 ## 1. Design principles
 
@@ -19,7 +19,8 @@
 profiles                 (1) ──< papers (creator/updater)
 exam_levels               (1) ──< papers >──(1) subjects
 exam_years                (1) ──< papers
-papers                    (1) ──< questions
+papers                    (1) ──< paper_parts
+paper_parts               (1) ──< questions
 questions                 (1) ──(1) answers
 questions                 (1) ──< marking_scheme_items
 papers                    (1) ──< video_sources
@@ -108,7 +109,41 @@ Only the approved admin account is enabled for the MVP. Public sign-up is not pa
 | `created_at` | timestamptz | UTC |
 | `updated_at` | timestamptz | UTC |
 
-`total_marks` should be recalculated by the backend from question marks or maintained through a database generated/validated mechanism. The API must reject inconsistent publication data.
+`total_marks` is derived from the sum of `paper_parts.total_marks` at publish time. The API must reject inconsistent publication data.
+
+### `paper_parts`
+
+Each paper has exactly two parts, `A` and `B`. The part stores the exam's own rules so the public site and the publish validator agree without hard-coding the structure in application code.
+
+| Column | Type | Notes |
+|---|---|---|
+| `id` | uuid | Primary key |
+| `paper_id` | uuid | References `papers`; cascade delete |
+| `part_code` | text | `A` or `B` |
+| `title` | text | Display title, for example `Part A — Short questions` |
+| `part_type` | enum/text | `short`, `structured`, or `easy` |
+| `question_count` | integer | Questions that exist in the part |
+| `selection_limit` | integer | Questions the student actually answers; `<= question_count` |
+| `marks_per_question` | numeric | Marks for each question in the part |
+| `total_marks` | numeric | `selection_limit * marks_per_question` |
+| `sort_order` | smallint | Display order; `A` is 1, `B` is 2 |
+| `created_at` | timestamptz | UTC |
+| `updated_at` | timestamptz | UTC |
+
+Unique constraint: `(paper_id, part_code)`.
+
+#### O/L Mathematics defaults
+
+Parts are created automatically by a database trigger on `papers` insert, derived from `paper_number`:
+
+| `paper_number` | Part | `part_type` | Questions | Answer | Marks each | Part total |
+|---|---|---|---:|---:|---:|---:|
+| `I` | A | `short` | 25 | all 25 | 2 | 50 |
+| `I` | B | `structured` | 5 | all 5 | 10 | 50 |
+| `II` | A | `easy` | 6 | any 5 | 10 | 50 |
+| `II` | B | `easy` | 6 | any 5 | 10 | 50 |
+
+Every paper totals 100 marks. Paper II holds 12 questions but only 10 are answered, so the paper total is the sum of the part totals, never the sum of every question's marks.
 
 ### `paper_topics`
 
@@ -125,14 +160,15 @@ Composite primary key: `(paper_id, topic_id)`.
 |---|---|---|
 | `id` | uuid | Primary key |
 | `paper_id` | uuid | References `papers` |
+| `part_id` | uuid | References `paper_parts`; must belong to the same paper |
 | `number_label` | text | For example `1`, `1(a)`, or `2(i)` |
-| `position` | integer | Stable display order within paper |
+| `position` | integer | Stable display order within the part |
 | `prompt_markdown` | text | Text/math authoring format |
-| `marks` | numeric | Maximum marks for the question |
+| `marks` | numeric | Maximum marks; must equal the part's `marks_per_question` |
 | `created_at` | timestamptz | UTC |
 | `updated_at` | timestamptz | UTC |
 
-Unique constraint: `(paper_id, position)` and a server-side uniqueness check for `number_label` where appropriate.
+Unique constraint: `(part_id, position)`. Positions restart at 1 in each part, so Paper I Part A uses 1–25 and Part B uses 1–5. The API rejects a question whose part has already reached `question_count`.
 
 ### `answers`
 
@@ -219,7 +255,8 @@ At minimum index:
 
 - published papers by status, exam year, subject, paper number, and published time;
 - slug lookups;
-- questions by `(paper_id, position)`;
+- paper parts by `(paper_id, sort_order)`;
+- questions by `(part_id, position)`;
 - answers by `question_id`;
 - marking-scheme items by `(question_id, position)`;
 - video sources by `paper_id`, `question_id`, and provider;

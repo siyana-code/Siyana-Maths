@@ -48,9 +48,23 @@ export type AdminPaper = AdminPaperSummary & {
   exam_year_id?: UUID;
 };
 
+export type PaperPart = {
+  id: UUID;
+  paper_id: UUID;
+  part_code: "A" | "B" | string;
+  title: string;
+  part_type: "short" | "structured" | "easy" | string;
+  question_count: number;
+  selection_limit: number;
+  marks_per_question: number | string;
+  total_marks: number | string;
+  sort_order: number;
+};
+
 export type Question = {
   id: UUID;
   paper_id: UUID;
+  part_id: UUID;
   number_label: string;
   position: number;
   prompt_markdown: string;
@@ -90,6 +104,7 @@ export type VideoSource = {
 
 export type PaperBundle = {
   paper: AdminPaper;
+  parts: PaperPart[];
   questions: Question[];
   answers: Answer[];
   marking_scheme_items: MarkingItem[];

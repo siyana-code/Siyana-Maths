@@ -44,6 +44,7 @@ class PaperPatchRequest(BaseModel):
 class QuestionCreateRequest(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
+    part_id: UUID
     number_label: str = Field(min_length=1, max_length=40)
     position: int | None = Field(default=None, ge=1)
     prompt_markdown: str = Field(min_length=1, max_length=20000)

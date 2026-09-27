@@ -603,6 +603,11 @@
             "title": "Number Label",
             "type": "string"
           },
+          "part_id": {
+            "format": "uuid",
+            "title": "Part Id",
+            "type": "string"
+          },
           "position": {
             "anyOf": [
               {
@@ -623,6 +628,7 @@
           }
         },
         "required": [
+          "part_id",
           "number_label",
           "prompt_markdown",
           "marks"

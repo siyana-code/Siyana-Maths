@@ -124,8 +124,9 @@ Returns one published paper with:
 
 - metadata and total marks;
 - ordered topics;
+- both paper parts with their question counts, selection limits, and mark values so the page can show "answer any 5 of 6";
 - paper-level video sources;
-- ordered questions;
+- ordered questions grouped by part;
 - each question's Sinhala answer;
 - ordered marking-scheme items;
 - question-level video sources.
@@ -166,11 +167,13 @@ The server generates the slug, timestamps, and creator identity.
 
 ### `GET /api/v1/admin/papers/{id}`
 
-Returns the complete editable paper, including unpublished children.
+Returns the complete editable paper, including unpublished children. The response contains `parts` (the two paper parts with their question counts, selection limits, and mark values) alongside `questions`, `answers`, `marking_scheme_items`, and `video_sources`.
+
+Parts are created by a database trigger from `paper_number` when the paper is created, so the create request does not accept part data.
 
 ### `PATCH /api/v1/admin/papers/{id}`
 
-Updates metadata, topics, or thumbnail. Does not publish implicitly.
+Updates metadata, topics, or thumbnail. Does not publish implicitly. Changing `paper_number` does not regenerate existing parts.
 
 ### `DELETE /api/v1/admin/papers/{id}`
 
@@ -180,11 +183,22 @@ Deletes an eligible draft or performs the explicitly approved archive/delete beh
 
 ### `POST /api/v1/admin/papers/{id}/questions`
 
-Creates an ordered question with prompt text/math and mark value.
+Creates a question inside one of the paper's parts.
+
+```json
+{
+  "part_id": "uuid",
+  "number_label": "1",
+  "prompt_markdown": "$$...$$",
+  "marks": 2
+}
+```
+
+The API verifies that `part_id` belongs to this paper, assigns the next free `position` inside that part, and rejects the request with `question_limit_reached` (422) once the part already holds `question_count` questions. A `part_id` from another paper returns `paper_part_not_found` (404).
 
 ### `PATCH /api/v1/admin/questions/{id}`
 
-Updates prompt, label, position, or marks.
+Updates prompt, label, position, or marks. Marks must stay consistent with the part's `marks_per_question` at publish time.
 
 ### `DELETE /api/v1/admin/questions/{id}`
 
@@ -211,6 +225,26 @@ Deletes one item after authorization and validation.
 ### `POST /api/v1/admin/papers/{id}/validate`
 
 Runs the full publication validation without changing state. It checks required metadata, ordered questions, answers, marking scheme, video sources, and mark totals.
+
+### Publication rules
+
+Publishing is rejected with `paper_validation_failed` (422) and a per-item `errors` array unless all of the following hold:
+
+| Check | Reason code |
+|---|---|
+| The paper has parts | `paper_parts_required` |
+| Each part holds exactly `question_count` questions | `question_count_mismatch` |
+| `selection_limit` does not exceed the questions present | `selection_limit_exceeds_questions` |
+| `total_marks` equals `marks_per_question * selection_limit` | `part_total_mismatch` |
+| Each question's marks equal its part's `marks_per_question` | `question_mark_mismatch` |
+| Each question has a Sinhala answer | `answer_required` |
+| Each question has at least one marking-scheme step | `marking_scheme_required` |
+| Non-alternative marking steps sum to the question's marks | `mark_total_mismatch` |
+| The paper has at least one question | `at_least_one_question_required` |
+| The paper has at least one video source | `at_least_one_video_required` |
+| Part totals sum to 100 | `paper_total_mismatch` |
+
+Paper II carries 12 questions but the student answers 10, so the paper total is the sum of the part totals, not the sum of every question's marks.
 
 ## 10. Admin video sources
 
