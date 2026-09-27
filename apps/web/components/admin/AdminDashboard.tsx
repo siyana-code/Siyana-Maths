@@ -3,6 +3,8 @@
 import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
 
+import { DocumentIcon, EditIcon, PlusIcon, SparkIcon } from "@/components/ui/Icons";
+import { Banner, EmptyState, StatusBadge } from "@/components/ui/Primitives";
 import { apiRequest, ApiError } from "@/lib/api";
 import { AdminPaperSummary, PaperListResponse, Taxonomy } from "@/lib/types";
 
@@ -33,42 +35,79 @@ export function AdminDashboard() {
     void load();
   }, [load]);
 
+  const draftCount = papers.filter((paper) => paper.status === "draft").length;
+  const publishedCount = papers.filter((paper) => paper.status === "published").length;
+
   return (
     <div className="stack-xl">
-      <div className="page-heading">
+      <div className="page-heading anim-fade-in">
         <div>
           <p className="eyebrow">Admin overview</p>
-          <h1>O/L Mathematics papers</h1>
-          <p className="muted">Create, edit, and publish past-paper learning content.</p>
+          <h1 className="t-headline-medium">O/L Mathematics papers</h1>
+          <p className="muted" style={{ margin: 0 }}>
+            Create, edit, and publish past-paper learning content.
+          </p>
         </div>
-        <Link className="button button-primary" href="/admin/papers/new">Create paper</Link>
+        <Link className="btn btn--filled" href="/admin/papers/new" style={{ textDecoration: "none" }}>
+          <PlusIcon size={18} />
+          Create paper
+        </Link>
       </div>
 
-      {error ? <p className="form-error" role="alert">{error}</p> : null}
-      {loading ? <p className="muted">Loading papers…</p> : null}
+      {error ? <Banner tone="error">{error}</Banner> : null}
 
-      {!loading && papers.length === 0 ? (
-        <section className="empty-state">
-          <h2>No papers yet</h2>
-          <p>Create the first latest O/L Mathematics paper to get started.</p>
-          <Link className="button button-primary" href="/admin/papers/new">Create first paper</Link>
-        </section>
+      {loading ? (
+        <div className="stack-lg">
+          <div className="skeleton" style={{ height: 84 }} />
+          <div className="skeleton" style={{ height: 84 }} />
+        </div>
       ) : null}
 
       {!loading && papers.length > 0 ? (
-        <div className="paper-list">
-          {papers.map((paper) => (
-            <article className="paper-row" key={paper.id}>
-              <div>
-                <div className="row-heading">
+        <div className="row" style={{ gap: 12 }}>
+          <span className="chip chip--filled">
+            <DocumentIcon size={14} />
+            {papers.length} total
+          </span>
+          <span className="chip">{draftCount} draft</span>
+          <span className="chip">{publishedCount} published</span>
+        </div>
+      ) : null}
+
+      {!loading && papers.length === 0 ? (
+        <EmptyState
+          icon={<SparkIcon size={26} />}
+          title="No papers yet"
+          description="Create the first O/L Mathematics paper to get started. Parts and mark rules are set up automatically."
+          action={
+            <Link className="btn btn--filled" href="/admin/papers/new" style={{ textDecoration: "none" }}>
+              Create first paper
+            </Link>
+          }
+        />
+      ) : null}
+
+      {!loading && papers.length > 0 ? (
+        <div className="paper-list stagger">
+          {papers.map((paper, index) => (
+            <article className="paper-row" key={paper.id} style={{ "--i": index } as React.CSSProperties}>
+              <div style={{ minWidth: 0 }}>
+                <div className="row" style={{ gap: 10 }}>
                   <h2>{paper.title}</h2>
-                  <span className={`status-badge status-${paper.status}`}>{paper.status}</span>
+                  <StatusBadge status={paper.status} />
                 </div>
-                <p className="muted">
-                  {paper.exam_year?.year ?? "Year not set"} · Paper {paper.paper_number} · {paper.medium.toUpperCase()}
+                <p className="muted" style={{ margin: "4px 0 0", fontSize: "0.8125rem" }}>
+                  {paper.exam_year?.year ?? "Year not set"} · Paper {paper.paper_number} ·{" "}
+                  {paper.medium.toUpperCase()}
+                  {paper.total_marks != null ? ` · ${paper.total_marks} marks` : ""}
                 </p>
               </div>
-              <Link className="button button-secondary" href={`/admin/papers/${paper.id}/edit`}>
+              <Link
+                className="btn btn--tonal"
+                href={`/admin/papers/${paper.id}/edit`}
+                style={{ textDecoration: "none" }}
+              >
+                <EditIcon size={16} />
                 Edit paper
               </Link>
             </article>
@@ -77,13 +116,21 @@ export function AdminDashboard() {
       ) : null}
 
       {taxonomy ? (
-        <section className="reference-card">
-          <h2>Seeded reference data</h2>
-          <p className="muted">
-            {taxonomy.levels.length} level · {taxonomy.subjects.length} subject · {taxonomy.exam_years.length} exam year
+        <section className="card card--elevated">
+          <div className="row">
+            <h2 className="t-title-medium" style={{ margin: 0 }}>Seeded reference data</h2>
+          </div>
+          <p className="muted" style={{ margin: "6px 0 0", fontSize: "0.8125rem" }}>
+            {taxonomy.levels.length} level · {taxonomy.subjects.length} subject ·{" "}
+            {taxonomy.exam_years.length} exam year
           </p>
         </section>
       ) : null}
+
+      <Link className="fab" href="/admin/papers/new" style={{ textDecoration: "none" }}>
+        <PlusIcon size={20} />
+        New paper
+      </Link>
     </div>
   );
 }

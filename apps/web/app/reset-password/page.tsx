@@ -4,6 +4,10 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { FormEvent, useEffect, useState } from "react";
 
+import { Button } from "@/components/ui/Button";
+import { TextInput } from "@/components/ui/Field";
+import { AlertIcon, CheckCircleIcon } from "@/components/ui/Icons";
+import { Brand } from "@/components/ui/Primitives";
 import { createClient } from "@/lib/supabase/client";
 
 export default function ResetPasswordPage() {
@@ -49,28 +53,35 @@ export default function ResetPasswordPage() {
       return;
     }
 
-    setNotice("Password updated. Sending you to the admin workspace…");
+    setNotice("Password updated. Sending you to the admin workspace.");
     router.replace("/admin");
     router.refresh();
   }
 
-  if (!ready) return <main className="auth-shell"><p className="muted">Checking your reset link…</p></main>;
+  if (!ready) {
+    return (
+      <main className="auth-shell">
+        <section className="auth-card">
+          <p className="muted">Checking your reset link</p>
+        </section>
+      </main>
+    );
+  }
 
   return (
     <main className="auth-shell">
       <section className="auth-card" aria-labelledby="reset-heading">
-        <Link className="brand" href="/">
-          Siyana Maths
-        </Link>
-        <p className="eyebrow">Admin access</p>
+        <Brand href="/" subtitle="Admin access" />
+        <div style={{ height: 20 }} />
         <h1 id="reset-heading">Set a new password</h1>
 
         {hasRecoverySession ? (
           <form className="stack-form" onSubmit={handleSubmit}>
-            <p className="muted">Choose a new password for your admin account.</p>
-            <label htmlFor="password">New password</label>
-            <input
-              id="password"
+            <p className="muted" style={{ margin: 0 }}>
+              Choose a new password for your admin account.
+            </p>
+            <TextInput
+              label="New password"
               name="password"
               type="password"
               autoComplete="new-password"
@@ -79,9 +90,8 @@ export default function ResetPasswordPage() {
               value={password}
               onChange={(event) => setPassword(event.target.value)}
             />
-            <label htmlFor="confirm">Confirm new password</label>
-            <input
-              id="confirm"
+            <TextInput
+              label="Confirm new password"
               name="confirm"
               type="password"
               autoComplete="new-password"
@@ -90,24 +100,37 @@ export default function ResetPasswordPage() {
               value={confirmPassword}
               onChange={(event) => setConfirmPassword(event.target.value)}
             />
-            {error ? <p className="form-error" role="alert">{error}</p> : null}
-            {notice ? <p className="form-success" role="status">{notice}</p> : null}
-            <button className="button button-primary" type="submit" disabled={submitting}>
-              {submitting ? "Saving…" : "Save new password"}
-            </button>
+
+            {error ? (
+              <p className="banner banner--error">
+                <AlertIcon size={18} />
+                <span>{error}</span>
+              </p>
+            ) : null}
+            {notice ? (
+              <p className="banner banner--success">
+                <CheckCircleIcon size={18} />
+                <span>{notice}</span>
+              </p>
+            ) : null}
+
+            <Button type="submit" variant="filled" loading={submitting} block>
+              {submitting ? "Saving" : "Save new password"}
+            </Button>
           </form>
         ) : (
           <div className="stack-form">
-            <p className="form-error" role="alert">
-              This reset link is missing, expired, or already used. Request a new one.
+            <p className="banner banner--error" style={{ marginTop: 0 }}>
+              <AlertIcon size={18} />
+              <span>This reset link is missing, expired, or already used. Request a new one.</span>
             </p>
-            <Link className="button button-primary" href="/forgot-password">
+            <Link className="btn btn--filled" href="/forgot-password" style={{ textDecoration: "none" }}>
               Request a new link
             </Link>
           </div>
         )}
 
-        <div className="inline-actions">
+        <div className="row" style={{ marginTop: 20 }}>
           <Link className="text-link" href="/login">
             Back to sign in
           </Link>

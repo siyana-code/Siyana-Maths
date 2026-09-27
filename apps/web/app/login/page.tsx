@@ -4,6 +4,10 @@ import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { FormEvent, Suspense, useState } from "react";
 
+import { Button } from "@/components/ui/Button";
+import { TextInput } from "@/components/ui/Field";
+import { AlertIcon } from "@/components/ui/Icons";
+import { Brand } from "@/components/ui/Primitives";
 import { createClient } from "@/lib/supabase/client";
 
 /** Keeps the real Supabase reason visible so a failed sign-in is diagnosable. */
@@ -57,18 +61,16 @@ function LoginForm() {
   return (
     <main className="auth-shell">
       <section className="auth-card" aria-labelledby="login-heading">
-        <Link className="brand" href="/">
-          Siyana Maths
-        </Link>
-        <p className="eyebrow">Tutor workspace</p>
+        <Brand href="/" subtitle="Tutor workspace" />
+        <div style={{ height: 20 }} />
         <h1 id="login-heading">Admin sign in</h1>
         <p className="muted">
           Sign in with the approved administrator account to manage O/L papers.
         </p>
+
         <form className="stack-form" onSubmit={handleSubmit}>
-          <label htmlFor="email">Email address</label>
-          <input
-            id="email"
+          <TextInput
+            label="Email address"
             name="email"
             type="email"
             autoComplete="email"
@@ -76,9 +78,8 @@ function LoginForm() {
             value={email}
             onChange={(event) => setEmail(event.target.value)}
           />
-          <label htmlFor="password">Password</label>
-          <input
-            id="password"
+          <TextInput
+            label="Password"
             name="password"
             type="password"
             autoComplete="current-password"
@@ -86,15 +87,24 @@ function LoginForm() {
             value={password}
             onChange={(event) => setPassword(event.target.value)}
           />
-          {error ? <p className="form-error" role="alert">{error}</p> : null}
-          <button className="button button-primary" type="submit" disabled={submitting}>
-            {submitting ? "Signing in…" : "Sign in"}
-          </button>
+
+          {error ? (
+            <p className="banner banner--error">
+              <AlertIcon size={18} />
+              <span>{error}</span>
+            </p>
+          ) : null}
+
+          <Button type="submit" variant="filled" loading={submitting} block>
+            {submitting ? "Signing in" : "Sign in"}
+          </Button>
         </form>
-        <p className="muted">
+
+        <p className="muted" style={{ marginTop: 20, marginBottom: 0, fontSize: "0.75rem" }}>
           Admin account: <code>rchkaushalya@gmail.com</code>
         </p>
-        <div className="inline-actions">
+
+        <div className="row" style={{ marginTop: 12, gap: 16 }}>
           <Link className="text-link" href="/forgot-password">
             Forgot your password?
           </Link>
@@ -109,7 +119,7 @@ function LoginForm() {
 
 export default function LoginPage() {
   return (
-    <Suspense fallback={<main className="auth-shell"><p>Loading sign in…</p></main>}>
+    <Suspense fallback={<main className="auth-shell"><p className="muted">Loading sign in</p></main>}>
       <LoginForm />
     </Suspense>
   );
