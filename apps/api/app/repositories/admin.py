@@ -183,12 +183,31 @@ class SupabaseAdminRepository:
         paper = await self.get_paper(paper_id)
         if not paper:
             raise AdminRepositoryError("paper_not_found", "Paper not found.", 404)
+        parts = await self._rows(
+            "paper_parts",
+            {
+                "id": f"eq.{payload.part_id}",
+                "paper_id": f"eq.{paper_id}",
+                "select": "id,question_count",
+            },
+        )
+        if not parts:
+            raise AdminRepositoryError("paper_part_not_found", "Paper part not found.", 404)
         body = payload.model_dump(mode="json", exclude_none=True)
+        position = body.get("position") or await self._next_position(
+            "questions", "part_id", payload.part_id
+        )
+        if position > int(parts[0]["question_count"]):
+            raise AdminRepositoryError(
+                "question_limit_reached",
+                "This part already has the configured number of questions.",
+                422,
+            )
         body.update(
             {
                 "paper_id": str(paper_id),
-                "position": body.get("position")
-                or await self._next_position("questions", "paper_id", paper_id),
+                "part_id": str(payload.part_id),
+                "position": position,
             }
         )
         try:
@@ -275,9 +294,13 @@ class SupabaseAdminRepository:
         paper = await self.get_paper(paper_id)
         if not paper:
             raise AdminRepositoryError("paper_not_found", "Paper not found.", 404)
+        parts = await self._rows(
+            "paper_parts",
+            {"paper_id": f"eq.{paper_id}", "order": "sort_order.asc"},
+        )
         questions = await self._rows(
             "questions",
-            {"paper_id": f"eq.{paper_id}", "order": "position.asc"},
+            {"paper_id": f"eq.{paper_id}", "order": "part_id,position.asc"},
         )
         question_ids = [str(question["id"]) for question in questions]
         answers: list[dict[str, Any]] = []
@@ -294,6 +317,7 @@ class SupabaseAdminRepository:
         )
         return {
             "paper": paper,
+            "parts": parts,
             "questions": questions,
             "answers": answers,
             "marking_scheme_items": marking_items,
@@ -307,45 +331,94 @@ class SupabaseAdminRepository:
             raise AdminRepositoryError(
                 "paper_already_published", "Paper is already published.", 409
             )
+
+        parts = bundle["parts"]
         questions = bundle["questions"]
         answers_by_question = {str(row["question_id"]): row for row in bundle["answers"]}
         items_by_question: dict[str, list[dict[str, Any]]] = {}
         for item in bundle["marking_scheme_items"]:
             items_by_question.setdefault(str(item["question_id"]), []).append(item)
-        videos = bundle["video_sources"]
+        questions_by_part: dict[str, list[dict[str, Any]]] = {}
+        for question in questions:
+            questions_by_part.setdefault(str(question.get("part_id")), []).append(question)
+
         errors: list[dict[str, Any]] = []
         total_marks = Decimal("0")
-        for question in questions:
-            question_id = str(question["id"])
-            question_marks = Decimal(str(question["marks"]))
-            total_marks += question_marks
-            if question_id not in answers_by_question:
-                errors.append({"question_id": question_id, "reason": "answer_required"})
-            items = items_by_question.get(question_id, [])
-            if not items:
-                errors.append({"question_id": question_id, "reason": "marking_scheme_required"})
-                continue
-            awarded = sum(
-                (
-                    Decimal(str(item["mark_value"]))
-                    for item in items
-                    if not item.get("is_alternative") and item.get("item_type") != "alternative"
-                ),
-                Decimal("0"),
-            )
-            if awarded != question_marks:
+        if not parts:
+            errors.append({"reason": "paper_parts_required"})
+
+        for part in parts:
+            part_id = str(part["id"])
+            part_questions = questions_by_part.get(part_id, [])
+            expected_count = int(part["question_count"])
+            selection_limit = int(part["selection_limit"])
+            marks_per_question = Decimal(str(part["marks_per_question"]))
+            part_total = Decimal(str(part["total_marks"]))
+            total_marks += part_total
+            if len(part_questions) != expected_count:
                 errors.append(
                     {
-                        "question_id": question_id,
-                        "reason": "mark_total_mismatch",
-                        "question_marks": str(question_marks),
-                        "scheme_marks": str(awarded),
+                        "part_id": part_id,
+                        "reason": "question_count_mismatch",
+                        "expected": expected_count,
+                        "actual": len(part_questions),
                     }
                 )
+            if selection_limit > len(part_questions):
+                errors.append({"part_id": part_id, "reason": "selection_limit_exceeds_questions"})
+            if part_total != marks_per_question * selection_limit:
+                errors.append(
+                    {
+                        "part_id": part_id,
+                        "reason": "part_total_mismatch",
+                        "expected": str(marks_per_question * selection_limit),
+                        "actual": str(part_total),
+                    }
+                )
+            for question in part_questions:
+                question_id = str(question["id"])
+                question_marks = Decimal(str(question["marks"]))
+                if question_marks != marks_per_question:
+                    errors.append(
+                        {
+                            "question_id": question_id,
+                            "reason": "question_mark_mismatch",
+                            "expected": str(marks_per_question),
+                            "actual": str(question_marks),
+                        }
+                    )
+                if question_id not in answers_by_question:
+                    errors.append({"question_id": question_id, "reason": "answer_required"})
+                items = items_by_question.get(question_id, [])
+                if not items:
+                    errors.append({"question_id": question_id, "reason": "marking_scheme_required"})
+                    continue
+                awarded = sum(
+                    (
+                        Decimal(str(item["mark_value"]))
+                        for item in items
+                        if not item.get("is_alternative") and item.get("item_type") != "alternative"
+                    ),
+                    Decimal("0"),
+                )
+                if awarded != question_marks:
+                    errors.append(
+                        {
+                            "question_id": question_id,
+                            "reason": "mark_total_mismatch",
+                            "question_marks": str(question_marks),
+                            "scheme_marks": str(awarded),
+                        }
+                    )
+
         if not questions:
             errors.append({"reason": "at_least_one_question_required"})
-        if not videos:
+        if not bundle["video_sources"]:
             errors.append({"reason": "at_least_one_video_required"})
+        if total_marks != Decimal("100"):
+            errors.append(
+                {"reason": "paper_total_mismatch", "expected": "100", "actual": str(total_marks)}
+            )
         if errors:
             raise AdminRepositoryError(
                 "paper_validation_failed",
