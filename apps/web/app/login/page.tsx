@@ -6,6 +6,24 @@ import { FormEvent, Suspense, useState } from "react";
 
 import { createClient } from "@/lib/supabase/client";
 
+/** Keeps the real Supabase reason visible so a failed sign-in is diagnosable. */
+function describeSignInError(signInError: { message: string; status?: number }) {
+  const message = signInError.message.toLowerCase();
+  if (message.includes("invalid login")) {
+    return "That email and password do not match an account. Use the reset link below if you have forgotten the password.";
+  }
+  if (message.includes("email not confirmed")) {
+    return "This email address is not confirmed yet. Check the confirmation link Supabase sent you.";
+  }
+  if (message.includes("rate limit") || (signInError.status ?? 0) === 429) {
+    return "Too many attempts. Wait a minute and try again.";
+  }
+  if (message.includes("fetch")) {
+    return "Could not reach Supabase. Check your internet connection and that the API keys are loaded.";
+  }
+  return `Sign-in failed: ${signInError.message}`;
+}
+
 function LoginForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -27,7 +45,7 @@ function LoginForm() {
     });
 
     if (signInError) {
-      setError("Sign-in failed. Check your admin email and password.");
+      setError(describeSignInError(signInError));
       setSubmitting(false);
       return;
     }
@@ -73,9 +91,17 @@ function LoginForm() {
             {submitting ? "Signing in…" : "Sign in"}
           </button>
         </form>
-        <Link className="text-link" href="/">
-          Return to home
-        </Link>
+        <p className="muted">
+          Admin account: <code>rchkaushalya@gmail.com</code>
+        </p>
+        <div className="inline-actions">
+          <Link className="text-link" href="/forgot-password">
+            Forgot your password?
+          </Link>
+          <Link className="text-link" href="/">
+            Return to home
+          </Link>
+        </div>
       </section>
     </main>
   );
